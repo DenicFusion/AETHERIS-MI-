@@ -1,0 +1,143 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "Represents a user in the system.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "role": { "type": "string", "enum": ["user", "admin"] },
+        "wallet_balance": { "type": "number", "description": "Usable funds" },
+        "profit_balance": { "type": "number", "description": "Accumulated profit earnings" },
+        "locked_balance": { "type": "number", "description": "Funds committed to active investments" },
+        "referralBalance": { "type": "number", "description": "Earnings from referrals" },
+        "totalDeposits": { "type": "number" },
+        "totalWithdrawals": { "type": "number" },
+        "totalProfits": { "type": "number" },
+        "status": { "type": "string", "enum": ["Active", "Pending", "Suspended"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "phone_number": { "type": "string" },
+        "currency_preference": { "type": "string" },
+        "notifications": { "type": "object" },
+        "biometrics_enabled": { "type": "boolean" },
+        "two_fa_enabled": { "type": "boolean" },
+        "refCode": { "type": "string", "description": "AET-XXXXXXX" },
+        "referredBy": { "type": "string", "description": "UID of the referrer" },
+        "referral_count": { "type": "number" },
+        "total_referral_earnings": { "type": "number" },
+        "tier1_earnings": { "type": "number" },
+        "tier2_earnings": { "type": "number" }
+      },
+      "required": ["uid", "email", "role", "wallet_balance", "locked_balance", "totalDeposits", "totalWithdrawals", "total_profits", "status", "createdAt"]
+    },
+    "Notification": {
+      "title": "Notification",
+      "description": "System or user specific notification",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "type": { "type": "string", "enum": ["deposit", "withdrawal", "profit", "interval", "broadcast"] },
+        "title": { "type": "string" },
+        "message": { "type": "string" },
+        "status": { "type": "string", "enum": ["unread", "read"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "type", "title", "message", "status", "createdAt"]
+    },
+    "WalletPool": {
+      "title": "Wallet Pool",
+      "description": "Admin managed crypto wallet addresses",
+      "type": "object",
+      "properties": {
+        "provider": { "type": "string", "description": "Bybit, Binance, etc." },
+        "network": { "type": "string", "description": "TRC20, ERC20, BTC, SOL" },
+        "addresses": { "type": "array", "items": { "type": "string" } }
+      },
+      "required": ["provider", "network", "addresses"]
+    },
+    "Transaction": {
+      "title": "Transaction",
+      "description": "Log of wallet movements",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "type": { "type": "string", "enum": ["deposit", "deduction", "penalty", "withdrawal"] },
+        "amount": { "type": "number" },
+        "status": { "type": "string", "enum": ["pending", "paid", "failed"] },
+        "reference": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "type", "amount", "status", "timestamp"]
+    },
+    "Config": {
+      "title": "Config",
+      "description": "Global configuration parameters.",
+      "type": "object",
+      "properties": {
+        "yieldMultiplier": {
+          "type": "number",
+          "description": "System yield multiplier"
+        }
+      },
+      "required": ["yieldMultiplier"]
+    },
+    "Plan": {
+      "title": "Plan",
+      "description": "Growth plan offering",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "price": { "type": "number" },
+        "duration": { "type": "number", "description": "Duration in days" },
+        "expectedReturn": { "type": "number", "description": "Return percentage" },
+        "capacity": { "type": "number" },
+        "popular": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "price", "duration", "expectedReturn", "capacity"]
+    },
+    "UserPlan": {
+      "title": "User Plan",
+      "description": "A plan a user has invested in",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "planId": { "type": "string" },
+        "amount": { "type": "number" },
+        "status": { "enum": ["Active", "Completed", "Cancelled"] },
+        "startDate": { "type": "string", "format": "date-time" },
+        "endDate": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "planId", "amount", "status", "startDate", "endDate"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/User" },
+      "description": "User profiles and balances"
+    },
+    "/config/global": {
+      "schema": { "$ref": "#/entities/Config" },
+      "description": "Global system configuration"
+    },
+    "/plans/{planId}": {
+      "schema": { "$ref": "#/entities/Plan" },
+      "description": "Growth plans available"
+    },
+    "/users/{userId}/transactions/{transactionId}": {
+      "schema": { "$ref": "#/entities/Transaction" },
+      "description": "User's financial transactions"
+    },
+    "/notifications/{notificationId}": {
+      "schema": { "$ref": "#/entities/Notification" },
+      "description": "System notifications"
+    },
+    "/wallet_pools/{poolId}": {
+      "schema": { "$ref": "#/entities/WalletPool" },
+      "description": "Admin collection of wallet pools"
+    }
+  }
+}

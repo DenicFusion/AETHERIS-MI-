@@ -1,0 +1,6 @@
+{
+  "name": "Aetheris",
+  "description": "Production e-commerce and financial dashboard platform focusing on secure payouts, admin control, and dynamic location services.",
+  "requestFramePermissions": ["camera"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

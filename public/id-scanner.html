@@ -1,0 +1,908 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no"/>
+<title>ID Verification Scanner</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#F5F6F8;--surface:#fff;--dark:#17191F;
+  --blue:#2563EB;--green:#16A34A;--red:#DC2626;
+  --t1:#0F172A;--t2:#475569;--t3:#94A3B8;--border:#E2E8F0;
+  --r:16px;
+  --font:-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif;
+}
+html,body{height:100%;font-family:var(--font);background:var(--bg);color:var(--t1);-webkit-font-smoothing:antialiased;overscroll-behavior:none}
+#app{min-height:100vh;display:flex;flex-direction:column;align-items:center;padding-bottom:60px}
+
+/* Header */
+.hdr{width:100%;max-width:480px;padding:20px 22px 0;display:flex;align-items:center;gap:11px}
+.hdr-logo{width:32px;height:32px;background:var(--blue);border-radius:8px;display:flex;align-items:center;justify-content:center}
+.hdr-logo svg{width:17px;height:17px;fill:#fff}
+.hdr-title{font-size:17px;font-weight:700;letter-spacing:-.3px}
+
+/* Steps */
+.steps{width:100%;max-width:480px;padding:14px 22px 0;display:flex;align-items:center}
+.si{display:flex;align-items:center;gap:7px;flex:1}
+.sc{width:27px;height:27px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;transition:all .3s}
+.sc.done{background:var(--green);color:#fff}
+.sc.active{background:var(--blue);color:#fff}
+.sc.idle{background:var(--border);color:var(--t3)}
+.sl{font-size:11px;font-weight:500;color:var(--t3);transition:color .25s}
+.sl.active{color:var(--blue)}.sl.done{color:var(--green)}
+.sline{flex:1;height:1px;background:var(--border);margin:0 7px;transition:background .3s}
+.sline.done{background:var(--green)}
+
+/* Screens */
+.screen{display:none;width:100%;max-width:480px;padding:14px 22px 0;flex-direction:column;align-items:center;gap:14px;animation:fu .3s ease}
+.screen.active{display:flex}
+@keyframes fu{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+
+/* Buttons */
+.btn{width:100%;padding:15px;border:none;border-radius:12px;font-size:15px;font-weight:600;cursor:pointer;transition:all .15s;-webkit-tap-highlight-color:transparent;letter-spacing:-.1px}
+.btn-p{background:var(--blue);color:#fff}.btn-p:active{background:#1D4ED8;transform:scale(.98)}
+.btn-g{background:transparent;color:var(--t2);border:1.5px solid var(--border)}.btn-g:active{background:var(--bg)}
+.btn-green{background:var(--green);color:#fff}.btn-green:active{background:#15803D}
+
+/* Idle */
+.idle-card{width:100%;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:28px 20px;display:flex;flex-direction:column;align-items:center;gap:18px;text-align:center}
+.idle-ico{width:68px;height:68px;background:linear-gradient(135deg,#EFF6FF,#DBEAFE);border-radius:18px;display:flex;align-items:center;justify-content:center}
+.idle-ico svg{width:34px;height:34px}
+.idle-h{font-size:22px;font-weight:700;letter-spacing:-.4px}
+.idle-s{font-size:13px;color:var(--t2);line-height:1.65;max-width:280px;margin-top:4px}
+.cklist{width:100%;display:flex;flex-direction:column;gap:9px;text-align:left}
+.cki{display:flex;align-items:flex-start;gap:9px;font-size:13px;color:var(--t2);line-height:1.4}
+.ckd{width:18px;height:18px;border-radius:50%;background:#EFF6FF;border:1.5px solid #BFDBFE;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}
+.ckd svg{width:9px;height:9px;stroke:var(--blue);fill:none;stroke-width:2.5}
+
+/* Permission */
+.perm-card{width:100%;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:24px 20px;display:flex;flex-direction:column;gap:14px}
+.perm-row{display:flex;align-items:center;gap:12px}
+.perm-ico{width:46px;height:46px;border-radius:12px;background:#FFF7ED;border:1px solid #FED7AA;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.perm-ico svg{width:23px;height:23px}
+.pt{font-size:15px;font-weight:600}.ps{font-size:13px;color:var(--t2);margin-top:2px;line-height:1.4}
+.divider{height:1px;background:var(--border)}
+.perm-note{font-size:13px;color:var(--t2);line-height:1.6}
+
+/* Scanner card */
+.sw{width:100%;background:var(--dark);border-radius:var(--r);overflow:hidden}
+
+.scan-hdr{padding:12px 14px 8px;display:flex;align-items:center;justify-content:space-between}
+.scan-pill{display:flex;align-items:center;gap:7px;background:rgba(255,255,255,.08);border-radius:20px;padding:5px 12px}
+.pill-ico{font-size:14px}
+.pill-txt{font-size:12px;font-weight:600;color:rgba(255,255,255,.9)}
+.snd-btn{width:32px;height:32px;border-radius:50%;background:rgba(255,255,255,.07);border:none;color:rgba(255,255,255,.65);display:flex;align-items:center;justify-content:center;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.snd-btn svg{width:14px;height:14px}
+
+.side-lbl{text-align:center;font-size:10px;font-weight:700;letter-spacing:1.3px;color:rgba(255,255,255,.4);text-transform:uppercase;padding-bottom:5px}
+
+/* Viewport */
+.vp{position:relative;width:calc(100% - 18px);margin:0 9px;aspect-ratio:1.586;border-radius:10px;overflow:hidden;background:#000}
+#video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
+
+/* Corners */
+.corners{position:absolute;inset:0;pointer-events:none;z-index:2}
+.cor{position:absolute;width:24px;height:24px;border-color:rgba(255,255,255,.35);border-style:solid;transition:border-color .3s}
+.cor.tl{top:8px;left:8px;border-width:2.5px 0 0 2.5px;border-radius:3px 0 0 0}
+.cor.tr{top:8px;right:8px;border-width:2.5px 2.5px 0 0;border-radius:0 3px 0 0}
+.cor.bl{bottom:8px;left:8px;border-width:0 0 2.5px 2.5px;border-radius:0 0 0 3px}
+.cor.br{bottom:8px;right:8px;border-width:0 2.5px 2.5px 0;border-radius:0 0 3px 0}
+.corners.rec .cor{border-color:#EF4444;box-shadow:0 0 10px rgba(239,68,68,.6)}
+.corners.done-rec .cor{border-color:#22C55E;box-shadow:0 0 10px rgba(34,197,94,.6)}
+
+/* REC badge */
+.rec-badge{position:absolute;top:10px;left:50%;transform:translateX(-50%);z-index:9;display:flex;align-items:center;gap:6px;padding:5px 12px;border-radius:20px;font-size:11px;font-weight:700;letter-spacing:.3px;backdrop-filter:blur(10px);white-space:nowrap;pointer-events:none;opacity:0;transition:opacity .3s}
+.rec-badge.vis{opacity:1}
+.rec-badge.idle-b{background:rgba(15,15,25,.8);border:1px solid rgba(255,255,255,.12);color:rgba(255,255,255,.65)}
+.rec-badge.recording{background:rgba(220,38,38,.9);border:1px solid rgba(252,165,165,.35);color:#fff;animation:recPulse 1.2s ease-in-out infinite}
+.rec-badge.captured{background:rgba(22,163,74,.93);border:1px solid rgba(134,239,172,.4);color:#fff}
+@keyframes recPulse{0%,100%{opacity:1}50%{opacity:.7}}
+.rec-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.recording .rec-dot{background:#FCA5A5;animation:dp 0.8s infinite}
+.idle-b .rec-dot{background:rgba(255,255,255,.4)}
+.captured .rec-dot{background:#86EFAC}
+@keyframes dp{0%,100%{opacity:1}50%{opacity:.2}}
+
+/* Flash overlay */
+.flash{position:absolute;inset:0;z-index:20;background:#fff;opacity:0;pointer-events:none;transition:opacity .06s}
+.flash.pop{opacity:.9}
+
+/* Timer ring */
+.timer-wrap{position:absolute;bottom:10px;right:10px;z-index:9;width:52px;height:52px;pointer-events:none}
+.timer-wrap svg{position:absolute;inset:0;transform:rotate(-90deg)}
+.t-track{fill:none;stroke:rgba(255,255,255,.12);stroke-width:4}
+.t-arc{fill:none;stroke:#EF4444;stroke-width:4;stroke-linecap:round;stroke-dasharray:138.2;stroke-dashoffset:138.2;transition:stroke-dashoffset .9s linear,stroke .3s}
+.t-num{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;color:#fff}
+
+/* Metrics */
+.mets{display:grid;grid-template-columns:1fr 1fr;gap:6px;width:calc(100% - 18px);margin:7px 9px 0}
+.met{background:rgba(255,255,255,.055);border-radius:8px;padding:7px 10px}
+.met-l{font-size:10px;font-weight:500;color:rgba(255,255,255,.35);letter-spacing:.4px;text-transform:uppercase;margin-bottom:3px}
+.met-r{display:flex;align-items:center;gap:5px}
+.met-b{flex:1;height:4px;border-radius:2px;background:rgba(255,255,255,.1);overflow:hidden}
+.met-f{height:100%;border-radius:2px;transition:width .12s ease,background .2s}
+.met-v{font-size:11px;font-weight:600;color:rgba(255,255,255,.75);min-width:30px;text-align:right}
+
+/* Status + button row */
+.scan-ft{padding:12px 14px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px}
+.ft-blk{flex:1}
+.ft-m{font-size:13px;font-weight:600;color:#fff}
+.ft-h{font-size:11px;color:rgba(255,255,255,.38);margin-top:3px;line-height:1.4}
+.capture-btn{flex-shrink:0;width:58px;height:58px;border-radius:50%;border:3px solid rgba(255,255,255,.2);background:rgba(255,255,255,.1);display:flex;align-items:center;justify-content:center;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:all .2s;position:relative}
+.capture-btn:active{transform:scale(.94)}
+.capture-btn.armed{border-color:#EF4444;background:rgba(239,68,68,.2);box-shadow:0 0 18px rgba(239,68,68,.45)}
+.capture-btn.done{border-color:#22C55E;background:rgba(34,197,94,.2)}
+.capture-btn svg{width:22px;height:22px}
+
+/* Flip prompt */
+.flipp{width:100%;background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.28);border-radius:10px;padding:12px 14px;display:none;align-items:center;gap:10px}
+.flipp.vis{display:flex}
+.flip-t{font-size:13px;font-weight:500;color:rgba(255,255,255,.88);line-height:1.45}
+
+/* Guide steps on idle screen */
+.guide-steps{width:100%;display:flex;flex-direction:column;gap:0;text-align:left}
+.gs{display:flex;align-items:flex-start;gap:12px}
+.gs-n{width:26px;height:26px;border-radius:50%;background:var(--blue);color:#fff;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}
+.gs-txt{font-size:13px;color:var(--t2);line-height:1.5;padding-top:4px}
+.gs-txt strong{color:var(--t1)}
+.gs-line{width:1px;height:16px;background:var(--border);margin-left:12px}
+
+/* Auto ring */
+.auto-ring{flex-shrink:0;width:58px;height:58px;position:relative;display:flex;align-items:center;justify-content:center}
+.auto-ring svg{position:absolute;inset:0;transform:rotate(-90deg)}
+.ar-track{fill:none;stroke:rgba(255,255,255,.1);stroke-width:4}
+.ar-arc{fill:none;stroke:#EF4444;stroke-width:4;stroke-linecap:round;stroke-dasharray:157;stroke-dashoffset:157;transition:stroke-dashoffset .9s linear,stroke .3s}
+.ar-num{font-size:17px;font-weight:700;color:#fff;position:relative;z-index:1}
+
+/* Pre-record overlay countdown (big centred number) */
+.pre-cd{position:absolute;inset:0;z-index:15;background:rgba(0,0,0,.62);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;opacity:0;pointer-events:none;transition:opacity .25s}
+.pre-cd.vis{opacity:1}
+.pre-cd-n{font-size:72px;font-weight:800;color:#fff;letter-spacing:-2px;line-height:1;animation:bigPop .4s cubic-bezier(.34,1.56,.64,1)}
+@keyframes bigPop{from{transform:scale(.5);opacity:0}to{transform:scale(1);opacity:1}}
+.pre-cd-lbl{font-size:14px;font-weight:600;color:rgba(255,255,255,.7);letter-spacing:.3px}
+.pth{flex:1;aspect-ratio:1.586;border-radius:9px;background:var(--bg);border:1.5px solid var(--border);overflow:hidden;position:relative;display:flex;align-items:center;justify-content:center}
+.pth img,.pth video{width:100%;height:100%;object-fit:cover}
+.pthl{position:absolute;bottom:4px;left:4px;background:rgba(0,0,0,.65);color:#fff;font-size:9px;font-weight:600;letter-spacing:.4px;padding:2px 6px;border-radius:3px;text-transform:uppercase}
+.ptph{display:flex;flex-direction:column;align-items:center;gap:3px;color:var(--t3)}
+.ptph svg{width:20px;height:20px;stroke:currentColor;fill:none}
+.ptph span{font-size:10px}
+
+/* Upload / processing */
+.proc-card{width:100%;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:36px 20px;display:flex;flex-direction:column;align-items:center;gap:18px;text-align:center}
+.spinner{width:52px;height:52px;border:3px solid var(--border);border-top-color:var(--blue);border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.proc-h{font-size:18px;font-weight:700;letter-spacing:-.3px}
+.proc-s{font-size:14px;color:var(--t2);line-height:1.5;max-width:260px}
+.proc-steps{width:100%;display:flex;flex-direction:column;gap:8px;text-align:left}
+.pst{display:flex;align-items:center;gap:9px;font-size:13px;color:var(--t2);padding:10px 13px;border-radius:9px;background:var(--bg);border:1px solid var(--border);transition:all .3s}
+.pst.act{color:var(--blue);border-color:#BFDBFE;background:#EFF6FF}
+.pst.done{color:var(--green);border-color:#BBF7D0;background:#F0FDF4}
+.pst-ico{width:17px;height:17px;flex-shrink:0;display:flex;align-items:center;justify-content:center}
+.ps-sp{width:13px;height:13px;border:2px solid #BFDBFE;border-top-color:var(--blue);border-radius:50%;animation:spin .7s linear infinite}
+
+/* Review screen */
+.review-card{width:100%;background:var(--surface);border:1.5px solid #86EFAC;border-radius:var(--r);padding:28px 20px;display:flex;flex-direction:column;align-items:center;gap:16px;text-align:center}
+.review-ico{width:68px;height:68px;border-radius:50%;background:linear-gradient(135deg,#22C55E,#16A34A);display:flex;align-items:center;justify-content:center;box-shadow:0 8px 22px rgba(34,197,94,.35);animation:pop .5s cubic-bezier(.34,1.56,.64,1)}
+@keyframes pop{from{transform:scale(.4);opacity:0}to{transform:scale(1);opacity:1}}
+.review-ico svg{width:34px;height:34px;stroke:#fff;fill:none;stroke-width:2.5}
+.review-h{font-size:21px;font-weight:700;letter-spacing:-.4px}
+.review-s{font-size:14px;color:var(--t2);line-height:1.65;max-width:290px}
+.review-badge{display:flex;align-items:center;gap:8px;background:#F0FDF4;border:1px solid #BBF7D0;border-radius:10px;padding:12px 16px;font-size:13px;font-weight:600;color:var(--green)}
+.review-badge svg{width:18px;height:18px;stroke:var(--green);fill:none;stroke-width:2.5}
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- Header -->
+  <div class="hdr">
+    <div class="hdr-logo"><svg viewBox="0 0 20 20"><path d="M10 2L2 7v6l8 5 8-5V7L10 2z"/></svg></div>
+    <span class="hdr-title">Identity Verification</span>
+  </div>
+
+  <!-- Steps -->
+  <div class="steps">
+    <div class="si"><div class="sc active" id="s1c">1</div><span class="sl active" id="s1l">Front</span></div>
+    <div class="sline" id="ln1"></div>
+    <div class="si"><div class="sc idle" id="s2c">2</div><span class="sl" id="s2l">Back</span></div>
+    <div class="sline" id="ln2"></div>
+    <div class="si"><div class="sc idle" id="s3c">✓</div><span class="sl" id="s3l">Done</span></div>
+  </div>
+
+  <!-- ═══ IDLE ═══ -->
+  <div class="screen active" id="sc-idle">
+    <div class="idle-card">
+      <div class="idle-ico">
+        <svg viewBox="0 0 36 36" fill="none" stroke="#2563EB" stroke-width="1.8">
+          <rect x="4" y="8" width="28" height="20" rx="3"/>
+          <circle cx="13" cy="16" r="3"/>
+          <path d="M20 13h7M20 18h7M8 25h20"/>
+        </svg>
+      </div>
+      <div>
+        <div class="idle-h">ID Verification</div>
+        <div class="idle-s">Follow these steps. The camera will record automatically — no buttons needed.</div>
+      </div>
+
+      <!-- Step list -->
+      <div class="guide-steps">
+        <div class="gs"><div class="gs-n">1</div><div class="gs-txt"><strong>Place your ID card face-up</strong> on a flat, well-lit surface</div></div>
+        <div class="gs-line"></div>
+        <div class="gs"><div class="gs-n">2</div><div class="gs-txt"><strong>Open camera</strong> and hold your phone above the card — keep all 4 corners in frame</div></div>
+        <div class="gs-line"></div>
+        <div class="gs"><div class="gs-n">3</div><div class="gs-txt"><strong>A 3-second countdown</strong> appears — then recording starts automatically for 10 seconds</div></div>
+        <div class="gs-line"></div>
+        <div class="gs"><div class="gs-n">4</div><div class="gs-txt"><strong>Flip the card</strong> when prompted — the back side records the same way</div></div>
+        <div class="gs-line"></div>
+        <div class="gs"><div class="gs-n">5</div><div class="gs-txt"><strong>Done</strong> — your documents upload automatically for review</div></div>
+      </div>
+
+      <button class="btn btn-p" onclick="App.showPerm()">I'm ready — open camera →</button>
+    </div>
+  </div>
+
+  <!-- ═══ PERMISSION ═══ -->
+  <div class="screen" id="sc-perm">
+    <div class="perm-card">
+      <div class="perm-row">
+        <div class="perm-ico">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#F97316" stroke-width="1.8">
+            <path d="M12 2a8 8 0 0 0-8 8v1a3 3 0 0 0 0 6h1m14 0h1a3 3 0 0 0 0-6v-1a8 8 0 0 0-8-8z"/>
+            <circle cx="12" cy="13" r="2.5"/>
+          </svg>
+        </div>
+        <div><div class="pt">Camera access required</div><div class="ps">We need your rear camera to record and photograph your ID card.</div></div>
+      </div>
+      <div class="divider"></div>
+      <div class="perm-note">When prompted, tap <strong>Allow</strong>. The camera will open automatically.</div>
+      <button class="btn btn-p" onclick="App.openCamera()">Open camera</button>
+      <button class="btn btn-g" onclick="App.show('sc-idle')">Go back</button>
+    </div>
+  </div>
+
+  <!-- ═══ SCANNER ═══ -->
+  <div class="screen" id="sc-scan">
+
+    <!-- Previews strip -->
+    <div class="prevs">
+      <div class="pth" id="pv-f"><div class="ptph"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="8" cy="10" r="1.5"/></svg><span>Front</span></div></div>
+      <div class="pth" id="pv-b"><div class="ptph"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><line x1="7" y1="10" x2="17" y2="10"/><line x1="7" y1="13" x2="13" y2="13"/></svg><span>Back</span></div></div>
+    </div>
+
+    <div class="sw">
+      <!-- Top bar -->
+      <div class="scan-hdr">
+        <div class="scan-pill">
+          <span class="pill-ico">🪪</span>
+          <span class="pill-txt" id="pill-txt">ID Card · Front Side</span>
+        </div>
+        <button class="snd-btn" onclick="App.toggleSound()">
+          <svg id="snd-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+            <path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>
+            <path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>
+          </svg>
+        </button>
+      </div>
+      <div class="side-lbl" id="side-lbl">FRONT SIDE</div>
+
+      <!-- Camera viewport -->
+      <div class="vp">
+        <video id="video" autoplay playsinline muted></video>
+
+        <!-- REC badge -->
+        <div class="rec-badge idle-b vis" id="rec-badge">
+          <div class="rec-dot"></div>
+          <span id="rec-txt">Get ready…</span>
+        </div>
+
+        <!-- Corner guides -->
+        <div class="corners" id="corners">
+          <div class="cor tl"></div><div class="cor tr"></div>
+          <div class="cor bl"></div><div class="cor br"></div>
+        </div>
+
+        <!-- Timer ring (bottom right) -->
+        <div class="timer-wrap" id="timer-wrap" style="opacity:0">
+          <svg viewBox="0 0 52 52" width="52" height="52">
+            <circle class="t-track" cx="26" cy="26" r="22"/>
+            <circle class="t-arc" id="t-arc" cx="26" cy="26" r="22"/>
+          </svg>
+          <div class="t-num" id="t-num">10</div>
+        </div>
+
+        <!-- Flash -->
+        <div class="flash" id="flash"></div>
+
+        <!-- Pre-record big countdown overlay -->
+        <div class="pre-cd" id="pre-cd">
+          <div class="pre-cd-n" id="pre-cd-n">3</div>
+          <div class="pre-cd-lbl" id="pre-cd-lbl">Place card in frame…</div>
+        </div>
+      </div>
+
+      <!-- Metrics -->
+      <div class="mets">
+        <div class="met"><div class="met-l">Sharpness</div><div class="met-r"><div class="met-b"><div class="met-f" id="mf-sh"></div></div><div class="met-v" id="mv-sh">–</div></div></div>
+        <div class="met"><div class="met-l">Glare</div><div class="met-r"><div class="met-b"><div class="met-f" id="mf-gl"></div></div><div class="met-v" id="mv-gl">–</div></div></div>
+        <div class="met"><div class="met-l">Alignment</div><div class="met-r"><div class="met-b"><div class="met-f" id="mf-al"></div></div><div class="met-v" id="mv-al">–</div></div></div>
+        <div class="met">
+          <div class="met-l">Brightness <span style="font-size:9px;opacity:.6">(0–30% OK)</span></div>
+          <div class="met-r"><div class="met-b"><div class="met-f" id="mf-br"></div></div><div class="met-v" id="mv-br">–</div></div>
+        </div>
+      </div>
+
+      <!-- Flip prompt -->
+      <div class="flipp" id="flipp">
+        <div style="font-size:20px">🔄</div>
+        <div class="flip-t"><strong style="color:#22C55E">Front done.</strong> Now flip your card and scan the back side.</div>
+      </div>
+
+      <!-- Footer: status + auto countdown ring -->
+      <div class="scan-ft">
+        <div class="ft-blk">
+          <div class="ft-m" id="ft-m">Place your ID card in frame</div>
+          <div class="ft-h" id="ft-h">Recording starts automatically</div>
+        </div>
+        <div class="auto-ring" id="auto-ring">
+          <svg viewBox="0 0 58 58" width="58" height="58">
+            <circle class="ar-track" cx="29" cy="29" r="25"/>
+            <circle class="ar-arc" id="ar-arc" cx="29" cy="29" r="25"/>
+          </svg>
+          <span class="ar-num" id="ar-num">–</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ UPLOADING ═══ -->
+  <div class="screen" id="sc-proc">
+    <div class="proc-card">
+      <div class="spinner"></div>
+      <div class="proc-h">Uploading your documents</div>
+      <div class="proc-s">Sending your ID images and video to our secure servers.</div>
+      <div class="proc-steps">
+        <div class="pst" id="ps1"><div class="pst-ico"><div class="ps-sp"></div></div>Uploading front side</div>
+        <div class="pst" id="ps2"><div class="pst-ico"><svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="2"><circle cx="6.5" cy="6.5" r="5"/></svg></div>Uploading back side</div>
+        <div class="pst" id="ps3"><div class="pst-ico"><svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="2"><circle cx="6.5" cy="6.5" r="5"/></svg></div>Finalising submission</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ UNDER REVIEW ═══ -->
+  <div class="screen" id="sc-review">
+    <div class="review-card">
+      <div class="review-ico">
+        <svg viewBox="0 0 36 36"><polyline points="6,18 14,26 30,10"/></svg>
+      </div>
+      <div class="review-h">Documents submitted</div>
+      <div class="review-s">Your ID has been submitted successfully. Our team will review your documents and verify your identity shortly.</div>
+      <div class="review-badge">
+        <svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        Under review — usually within 24 hours
+      </div>
+      <button class="btn btn-green" onclick="App.goToDashboard()">Go to dashboard →</button>
+      <button class="btn btn-g" onclick="App.show('sc-idle')">Scan another document</button>
+    </div>
+  </div>
+
+</div>
+<canvas id="cvs" style="display:none"></canvas>
+
+<script>
+'use strict';
+
+/* ═══════════════════════════════════════════
+   CONFIG
+═══════════════════════════════════════════ */
+const VIDEO_DURATION = 10; // seconds to record per side
+
+// Quality thresholds — for display only, don't block recording
+// Sharpness/Glare/Alignment: 60-100% = green, below = warn
+// Brightness: 0-30% is perfectly fine (shown as green in that range)
+const SHARP_WARN  = 60;
+const GLARE_WARN  = 60;
+const ALIGN_WARN  = 60;
+// Brightness: green if ≤ 30% OR ≥ 60% (warn only in middle range 30-60%)
+
+/* ═══════════════════════════════════════════
+   STATE
+═══════════════════════════════════════════ */
+const S = {
+  side        : 'front',
+  stream      : null,
+  raf         : 0,
+  recording   : false,
+  recTimer    : null,
+  recSeconds  : VIDEO_DURATION,
+  mediaRec    : null,
+  recChunks   : [],
+  soundOn     : true,
+  preTimer    : null,  // pre-record countdown timer
+
+  // Captured data
+  frontPhoto  : null,   // base64 jpeg
+  backPhoto   : null,
+  frontVideo  : null,   // Blob
+  backVideo   : null,
+
+  reset(){
+    this.side='front'; this.recording=false; this.recSeconds=VIDEO_DURATION;
+    this.frontPhoto=null; this.backPhoto=null;
+    this.frontVideo=null; this.backVideo=null;
+    this.preTimer=null;
+  },
+};
+
+const video = document.getElementById('video');
+const cvs   = document.getElementById('cvs');
+
+/* ═══════════════════════════════════════════
+   UI
+═══════════════════════════════════════════ */
+const UI = {
+  show(id){
+    document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+  },
+
+  labels(){
+    const f = S.side==='front';
+    document.getElementById('pill-txt').textContent = 'ID Card · '+(f?'Front Side':'Back Side');
+    document.getElementById('side-lbl').textContent = f?'FRONT SIDE':'BACK SIDE';
+  },
+
+  steps(){
+    const f=S.side==='front', b=S.side==='back';
+    this._st('s1', f?'active':'done', f?'active':'done');
+    this._st('s2', b?'active':(f?'idle':'done'), b?'active':(f?'':'done'));
+    document.getElementById('ln1').classList.toggle('done',!f);
+  },
+
+  _st(id,cs,ls){
+    const c=document.getElementById(id+'c'), l=document.getElementById(id+'l');
+    c.className='sc '+cs; l.className='sl '+(ls||'');
+    if(id==='s1'&&cs==='done') c.textContent='✓';
+  },
+
+  status(main,hint){
+    document.getElementById('ft-m').textContent=main;
+    document.getElementById('ft-h').textContent=hint;
+  },
+
+  setAutoRing(pct, active, label){
+    const arc  = document.getElementById('ar-arc');
+    const num  = document.getElementById('ar-num');
+    if(!arc||!num) return;
+    arc.style.strokeDashoffset = 157*(1-pct);
+    arc.style.stroke = active ? '#EF4444' : 'rgba(255,255,255,.2)';
+    num.textContent  = label ?? '–';
+  },
+
+  showPreCd(n, lbl){
+    const el  = document.getElementById('pre-cd');
+    const num = document.getElementById('pre-cd-n');
+    const lb  = document.getElementById('pre-cd-lbl');
+    if(n===null){ el.classList.remove('vis'); return; }
+    el.classList.add('vis');
+    // Re-trigger animation by cloning
+    const clone = num.cloneNode(true);
+    clone.textContent = n;
+    num.parentNode.replaceChild(clone, num);
+    if(lb) lb.textContent = lbl||'Place card in frame…';
+  },
+
+  bar(fid,vid,val,isBright){
+    const f=document.getElementById(fid), v=document.getElementById(vid);
+    if(!f||!v)return;
+    f.style.width=val+'%';
+    if(isBright){
+      // Brightness: 0-30% = green (good), 30-60% = amber, 60-100% = green
+      f.style.background = (val<=30||val>=60) ? '#22C55E' : '#F59E0B';
+    } else {
+      f.style.background = val>=SHARP_WARN ? '#22C55E' : val>=40 ? '#F59E0B' : '#EF4444';
+    }
+    v.textContent=val+'%';
+  },
+
+  recBadge(state,text){
+    const el=document.getElementById('rec-badge'), t=document.getElementById('rec-txt');
+    el.className='rec-badge vis '+state; t.textContent=text;
+  },
+
+  corners(state){ // 'idle' | 'rec' | 'done'
+    const el=document.getElementById('corners');
+    el.className='corners'+(state==='rec'?' rec':state==='done'?' done-rec':'');
+  },
+
+  setTimer(secs){
+    const circ = 2*Math.PI*22; // 138.2
+    const pct  = secs/VIDEO_DURATION;
+    const arc  = document.getElementById('t-arc');
+    const num  = document.getElementById('t-num');
+    const wrap = document.getElementById('timer-wrap');
+    wrap.style.opacity='1';
+    arc.style.strokeDashoffset = circ*(1-pct);
+    arc.style.stroke = secs>5?'#EF4444':'#F59E0B';
+    num.textContent  = secs;
+  },
+
+  hideTimer(){ document.getElementById('timer-wrap').style.opacity='0'; },
+
+  flash(){
+    const f=document.getElementById('flash');
+    f.classList.add('pop');
+    setTimeout(()=>f.classList.remove('pop'),180);
+  },
+
+  setPreview(id,src,type,label){
+    const el=document.getElementById(id);
+    if(type==='img'){
+      el.innerHTML=`<img src="${src}"/><div class="pthl">${label}</div>`;
+    } else {
+      el.innerHTML=`<video src="${src}" autoplay loop muted playsinline style="width:100%;height:100%;object-fit:cover"></video><div class="pthl">${label}</div>`;
+    }
+  },
+
+  flip(show){
+    document.getElementById('flipp').classList.toggle('vis',show);
+  },
+
+  async procStep(id,ms){
+    const el=document.getElementById(id);
+    el.classList.add('act');
+    el.querySelector('.pst-ico').innerHTML='<div class="ps-sp"></div>';
+    await sleep(ms);
+    el.classList.remove('act'); el.classList.add('done');
+    el.querySelector('.pst-ico').innerHTML='<svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="#16A34A" stroke-width="2.5"><polyline points="2,6.5 5,10 11,3"/></svg>';
+  },
+};
+
+/* ═══════════════════════════════════════════
+   PIXEL ANALYSIS  — sharpness/glare/brightness
+   Runs every rAF, purely informational display
+═══════════════════════════════════════════ */
+function analyzeFrame(){
+  if(!video||video.readyState<2||!video.videoWidth) return null;
+  const W=280, H=Math.round((W*video.videoHeight)/video.videoWidth)||175;
+  cvs.width=W; cvs.height=H;
+  const ctx=cvs.getContext('2d',{willReadFrequently:true});
+  ctx.drawImage(video,0,0,W,H);
+  const {data}=ctx.getImageData(0,0,W,H);
+  const px=W*H;
+
+  let lumSum=0,over=0;
+  for(let i=0;i<data.length;i+=4){
+    const lum=0.299*data[i]+0.587*data[i+1]+0.114*data[i+2];
+    lumSum+=lum;
+    if(data[i]>240&&data[i+1]>240&&data[i+2]>240) over++;
+  }
+  const avgLum    = lumSum/px;
+  const brightness = Math.min(100,Math.round(avgLum/1.55));
+  const glare      = Math.max(0,Math.min(100,Math.round(100-(over/px/0.10)*100)));
+
+  // Tenengrad sharpness
+  const gray=new Float32Array(px);
+  for(let i=0,p=0;i<data.length;i+=4,p++)
+    gray[p]=0.299*data[i]+0.587*data[i+1]+0.114*data[i+2];
+  let gs=0,gc=0;
+  const y0=~~(H*.18),y1=~~(H*.82),x0=~~(W*.08),x1=~~(W*.92);
+  for(let y=y0;y<y1;y++){
+    for(let x=x0;x<x1-1;x++){
+      const i=y*W+x;
+      const gx=gray[i+1]-gray[i];
+      const gy=y+1<H?gray[(y+1)*W+x]-gray[i]:0;
+      gs+=gx*gx+gy*gy; gc++;
+    }
+  }
+  const sharpness=Math.min(100,Math.round((gc?gs/gc:0)/2.8));
+
+  // Alignment
+  const cL=lReg(gray,W,H,.18,.18,.82,.82);
+  const eL=(lReg(gray,W,H,0,0,.15,.15)+lReg(gray,W,H,.85,0,1,.15)+
+            lReg(gray,W,H,0,.85,.15,1)+lReg(gray,W,H,.85,.85,1,1))/4;
+  const alignment=Math.min(100,Math.max(0,Math.round(Math.abs(cL-eL)*2.6+22)));
+
+  return {sharpness,glare,brightness,alignment};
+}
+
+function lReg(g,W,H,x0,y0,x1,y1){
+  let s=0,c=0;
+  for(let y=~~(y0*H);y<~~(y1*H);y++)
+    for(let x=~~(x0*W);x<~~(x1*W);x++){s+=g[y*W+x];c++;}
+  return c?s/c:0;
+}
+
+/* ═══════════════════════════════════════════
+   RAF LOOP — just updates metrics display
+═══════════════════════════════════════════ */
+function startMetricsLoop(){
+  function loop(){
+    const m=analyzeFrame();
+    if(m){
+      UI.bar('mf-sh','mv-sh',m.sharpness,false);
+      UI.bar('mf-gl','mv-gl',m.glare,false);
+      UI.bar('mf-al','mv-al',m.alignment,false);
+      UI.bar('mf-br','mv-br',m.brightness,true);
+    }
+    S.raf=requestAnimationFrame(loop);
+  }
+  S.raf=requestAnimationFrame(loop);
+}
+
+/* ═══════════════════════════════════════════
+   AUTO-START COUNTDOWN  — 3s before recording
+   Shows a big number on screen, then fires
+═══════════════════════════════════════════ */
+function autoStartCountdown(){
+  if(S.preTimer){ clearInterval(S.preTimer); S.preTimer=null; }
+
+  const side = S.side==='front' ? 'front side' : 'back side';
+  let tick = 3;
+
+  UI.recBadge('idle-b','Recording in '+tick+'…');
+  UI.status('Get ready — '+side,'Hold your ID card in frame');
+  UI.showPreCd(tick, 'Place '+side+' of card in frame…');
+  UI.setAutoRing(tick/3, true, tick);
+  speak(String(tick));
+
+  S.preTimer = setInterval(()=>{
+    tick--;
+    if(tick>0){
+      UI.recBadge('idle-b','Recording in '+tick+'…');
+      UI.showPreCd(tick, 'Hold card steady…');
+      UI.setAutoRing(tick/3, true, tick);
+      speak(String(tick));
+    } else {
+      clearInterval(S.preTimer); S.preTimer=null;
+      UI.showPreCd(null); // hide overlay
+      startRecording();
+    }
+  },1000);
+}
+
+/* ═══════════════════════════════════════════
+   RECORDING
+═══════════════════════════════════════════ */
+function startRecording(){
+  if(S.recording) return;
+  if(!S.stream){ alert('Camera not ready.'); return; }
+
+  // Check MediaRecorder support
+  const mime = ['video/webm;codecs=vp9','video/webm;codecs=vp8','video/webm','video/mp4']
+    .find(t=>{ try{return MediaRecorder.isTypeSupported(t);}catch{return false;} }) || '';
+
+  S.recChunks = [];
+  try{
+    S.mediaRec = new MediaRecorder(S.stream, mime?{mimeType:mime}:{});
+  }catch(e){
+    S.mediaRec = new MediaRecorder(S.stream);
+  }
+
+  S.mediaRec.ondataavailable = e=>{ if(e.data&&e.data.size>0) S.recChunks.push(e.data); };
+  S.mediaRec.onstop = onRecordingStop;
+  S.mediaRec.start(200); // collect chunks every 200ms
+
+  S.recording    = true;
+  S.recSeconds   = VIDEO_DURATION;
+
+  UI.recBadge('recording','● REC');
+  UI.corners('rec');
+  UI.setAutoRing(1, true, '●');
+  UI.status('Recording…','Hold the card steady — '+VIDEO_DURATION+'s');
+  UI.setTimer(VIDEO_DURATION);
+  speak('Recording. Hold the card steady.');
+
+  // Countdown
+  S.recTimer = setInterval(()=>{
+    S.recSeconds--;
+    UI.setTimer(S.recSeconds);
+    UI.status('Recording…','Hold the card steady — '+S.recSeconds+'s remaining');
+
+    if(S.recSeconds<=0){
+      clearInterval(S.recTimer);
+      S.recTimer=null;
+      // Take photo snapshot right before stopping video
+      takePhoto();
+      S.mediaRec.stop();
+    }
+  },1000);
+}
+
+function takePhoto(){
+  // Full-res snapshot
+  const cap=document.createElement('canvas');
+  cap.width = video.videoWidth || cvs.width || 1280;
+  cap.height = video.videoHeight || cvs.height || 720;
+  cap.getContext('2d').drawImage(video,0,0);
+  UI.flash();
+  const b64=cap.toDataURL('image/jpeg',0.93);
+  if(S.side==='front') S.frontPhoto=b64;
+  else                  S.backPhoto=b64;
+}
+
+function onRecordingStop(){
+  S.recording=false;
+  const blob=new Blob(S.recChunks,{type:S.mediaRec.mimeType||'video/webm'});
+  const url =URL.createObjectURL(blob);
+
+  if(S.side==='front'){
+    S.frontVideo=blob;
+    UI.setPreview('pv-f',url,'vid','FRONT VIDEO');
+    UI.recBadge('captured','Front captured ✓');
+    UI.corners('done');
+    UI.hideTimer();
+    UI.setAutoRing(0,false,'✓');
+    UI.status('Front side done ✓','Flip your card — back side starts in 3 seconds');
+    speak('Front side recorded. Please flip your card now.');
+    UI.flip(true);
+    // Switch to back after 3 seconds
+    setTimeout(()=>{
+      UI.flip(false);
+      switchToBack();
+    },3000);
+  } else {
+    S.backVideo=blob;
+    UI.setPreview('pv-b',url,'vid','BACK VIDEO');
+    UI.recBadge('captured','Back captured ✓');
+    UI.corners('done');
+    UI.hideTimer();
+    UI.setAutoRing(0,false,'✓');
+    UI.status('Back side done ✓','Uploading your documents…');
+    speak('Back side recorded. Uploading now.');
+    setTimeout(()=>doUpload(),1200);
+  }
+}
+
+function switchToBack(){
+  S.side='back';
+  UI.labels(); UI.steps();
+  UI.recBadge('idle-b','Get ready for back side…');
+  UI.corners('idle');
+  UI.setAutoRing(0, false);
+  UI.status('Flip your card','Back side recording starts in 3 seconds');
+  // Auto-start back side countdown
+  autoStartCountdown();
+}
+
+/* ═══════════════════════════════════════════
+   UPLOAD  — sends to your backend
+   Replace the URL and logic below with your
+   actual Firebase / Cloudinary / server endpoint
+═══════════════════════════════════════════ */
+async function doUpload(){
+  cancelAnimationFrame(S.raf);
+  stopStream();
+  UI.show('sc-proc');
+
+  const blobToDataURL = (blob) => new Promise((resolve, reject) => {
+    if(!blob) return resolve(null);
+    const reader = new FileReader();
+    reader.onloadend = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+
+  // ── Step 1: front ───────────────────────────────────────
+  await UI.procStep('ps1',500);
+
+  // ── Step 2: back ────────────────────────────────────────
+  await UI.procStep('ps2',500);
+
+  // ── Step 3: finalise ────────────────────────────────────
+  await UI.procStep('ps3',500);
+
+  const frontDataUrl = await blobToDataURL(S.frontVideo);
+  const backDataUrl = await blobToDataURL(S.backVideo);
+
+  // Send the captured photos to the parent React application
+  window.parent.postMessage({
+    type: 'ID_SCAN_DONE',
+    data: {
+      frontB64: frontDataUrl,
+      backB64: backDataUrl,
+      ocrData: null,
+      security: null,
+      confidence: null,
+    }
+  }, '*');
+
+  // Update steps UI
+  document.getElementById('s3c').className='sc done';
+  document.getElementById('s3l').className='sl done';
+  document.getElementById('ln2').classList.add('done');
+
+  // We can show sc-review, but the parent React component will likely hide this iframe anyway
+  // when it transitions back to the text entry form.
+  UI.show('sc-review');
+}
+
+function dataURItoBlob(dataURI){
+  const parts=dataURI.split(',');
+  const mime=parts[0].match(/:(.*?);/)[1];
+  const raw=atob(parts[1]);
+  const arr=new Uint8Array(raw.length);
+  for(let i=0;i<raw.length;i++) arr[i]=raw.charCodeAt(i);
+  return new Blob([arr],{type:mime});
+}
+
+/* ═══════════════════════════════════════════
+   APP
+═══════════════════════════════════════════ */
+const App={
+  show(id){ UI.show(id); },
+  showPerm(){ UI.show('sc-perm'); },
+
+  async openCamera(){
+    UI.show('sc-scan'); UI.labels(); UI.steps();
+    UI.recBadge('idle-b','Get ready…');
+    UI.flip(false); UI.corners('idle');
+    UI.setAutoRing(0, false);
+
+    if(S.stream) stopStream();
+
+    try{
+      S.stream=await navigator.mediaDevices.getUserMedia({
+        video:{facingMode:{exact:'environment'},width:{ideal:1920},height:{ideal:1080}},
+        audio:false,
+      });
+    }catch(_){
+      try{
+        S.stream=await navigator.mediaDevices.getUserMedia({
+          video:{facingMode:'environment',width:{ideal:1280},height:{ideal:720}},
+          audio:false,
+        });
+      }catch(e){
+        alert('Camera access denied. Please allow camera permission and try again.');
+        UI.show('sc-perm'); return;
+      }
+    }
+
+    video.srcObject=S.stream;
+    await video.play();
+    startMetricsLoop();
+
+    // Auto-start after 3 second countdown
+    autoStartCountdown();
+  },
+
+  toggleSound(){
+    S.soundOn=!S.soundOn;
+    document.getElementById('snd-ico').style.opacity=S.soundOn?'1':'0.3';
+  },
+
+  goToDashboard(){
+    // The parent app will handle this.
+    // In case this is running standalone, we just alert.
+    alert('Navigating to dashboard…');
+  },
+
+  reset(){
+    stopStream();
+    cancelAnimationFrame(S.raf);
+    if(S.recTimer){clearInterval(S.recTimer);S.recTimer=null;}
+    if(S.preTimer){clearInterval(S.preTimer);S.preTimer=null;}
+    S.reset();
+    UI.show('sc-idle');
+  },
+};
+
+function stopStream(){
+  if(S.stream){ S.stream.getTracks().forEach(t=>t.stop()); S.stream=null; }
+}
+
+/* ═══════════════════════════════════════════
+   UTILS
+═══════════════════════════════════════════ */
+function speak(txt){
+  if(!S.soundOn||!window.speechSynthesis) return;
+  window.speechSynthesis.cancel();
+  const u=new SpeechSynthesisUtterance(txt);
+  u.rate=0.95; u.pitch=1;
+  window.speechSynthesis.speak(u);
+}
+function sleep(ms){return new Promise(r=>setTimeout(r,ms));}
+</script>
+</body>
+</html>

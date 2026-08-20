@@ -1,0 +1,10 @@
+{
+  "projectId": "desl-store",
+  "appId": "1:682697715338:web:de981748e66190a99f0773",
+  "apiKey": "AIzaSyBttEXDLobya8MUQqLwRqR7oUoFZ0KyvHU",
+  "authDomain": "auth.aetheriss.online",
+  "firestoreDatabaseId": "ai-studio-e22fb511-7e23-4ac6-8a29-952a16b718f9",
+  "storageBucket": "desl-store.firebasestorage.app",
+  "messagingSenderId": "682697715338",
+  "measurementId": ""
+}
