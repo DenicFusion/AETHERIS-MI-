@@ -238,8 +238,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       await signInWithEmailAndPassword(auth, email, pass);
       localStorage.setItem('aetheris_last_active', Date.now().toString());
-    } catch (error) {
-      if (email === 'admin@aetheris.com' && pass === 'MasterAdmin123!') {
+    } catch (error: any) {
+      const isCredentialError = error?.code === 'auth/invalid-credential' || error?.code === 'auth/user-not-found' || error?.code === 'auth/wrong-password';
+      
+      if (email === 'admin@aetheris.com' && pass === 'MasterAdmin123!' && isCredentialError) {
         try {
           const cred = await createUserWithEmailAndPassword(auth, email, pass);
           try {
@@ -254,15 +256,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 createdAt: new Date()
              });
           } catch (e) {
-             console.error("Failed to re-initialize admin firestore doc", e);
+             console.warn("Failed to initialize admin firestore record:", e);
           }
+          localStorage.setItem('aetheris_last_active', Date.now().toString());
           return;
         } catch (regError) {
-          console.error("Failed to auto-recreate admin user", regError);
+          console.warn("Admin account setup already completed or network unavailable:", regError);
         }
       }
 
-      if (error && ((error as any).code === 'auth/invalid-credential' || (error as any).code === 'auth/user-not-found')) {
+      if (isCredentialError) {
         throw new Error('Invalid email or password. Please try again.');
       }
       throw error;

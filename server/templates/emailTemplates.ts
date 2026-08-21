@@ -20,11 +20,14 @@ export const getWelcomeTemplate = (username: string, logoUrl?: string) => {
   return baseTemplate(`
     <h3 style="margin-top: 0; color: #ffffff; font-size: 22px; line-height: 1.4;">Hello ${username},</h3>
     <p style="color: #cbd5e1; font-size: 16px; margin-top: 16px; margin-bottom: 16px; line-height: 1.6;">Welcome to Aetheris! We're thrilled to have you on board.</p>
-    <p style="color: #cbd5e1; font-size: 16px; margin-bottom: 16px; line-height: 1.6;">As a special welcome, you've unlocked a <strong>$100 Signup Reward</strong> bonus, which has been credited to your wallet balance.</p>
+    <p style="color: #cbd5e1; font-size: 16px; margin-bottom: 16px; line-height: 1.6;">As a special welcome, you've unlocked a <strong>$100 Signup Reward</strong> bonus, which has been credited directly to your account balance.</p>
+    <div style="background-color: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 8px; padding: 12px 16px; margin-bottom: 20px;">
+      <p style="color: #fbbf24; font-size: 14px; margin: 0; line-height: 1.5;"><strong>Important Notice:</strong> The $100 Signup Reward is <strong>withdrawable only</strong>.</p>
+    </div>
     <p style="color: #cbd5e1; font-size: 16px; margin-bottom: 16px; line-height: 1.6;">Here’s what you can do next:</p>
     <ul style="color: #cbd5e1; font-size: 16px; margin-bottom: 24px; line-height: 1.6; padding-left: 20px;">
       <li style="margin-bottom: 8px;">Explore our advanced AI trading engines and engine levels</li>
-      <li style="margin-bottom: 8px;">Allocate capital to activate an engine level</li>
+      <li style="margin-bottom: 8px;">Fund your trading balance to activate an AI engine level</li>
       <li style="margin-bottom: 8px;">Invite friends using your referral link for extra bonuses</li>
     </ul>
     <p style="color: #cbd5e1; font-size: 16px; margin-bottom: 32px; line-height: 1.6;">Thank you for trusting Aetheris.</p>

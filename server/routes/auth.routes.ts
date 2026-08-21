@@ -92,7 +92,7 @@ authRoutes.post('/welcome', async (req, res) => {
               type: "Signup Reward",
               status: "SUCCESS",
               amount: bonusAmount,
-              message: "Signup Reward Bonus",
+              message: "Signup Reward Bonus (Withdrawable Only)",
               reference: `AET-REWARD-${uSnap.id.substring(0, 6).toUpperCase()}`,
               timestamp: FieldValue.serverTimestamp()
             });
@@ -103,7 +103,7 @@ authRoutes.post('/welcome', async (req, res) => {
               userId: uSnap.id,
               type: 'deposit',
               title: "Signup Reward Unlocked! 🎉",
-              message: `Welcome to Aetheris! A $${bonusAmount} promotional Signup Reward has been credited to your wallet balance.`,
+              message: `Welcome to Aetheris! A $${bonusAmount} promotional Signup Reward has been credited to your wallet balance. Please note this bonus is withdrawable only.`,
               status: 'unread',
               createdAt: FieldValue.serverTimestamp()
             });
@@ -334,7 +334,7 @@ authRoutes.post('/confirm-verification', async (req, res) => {
           type: "Signup Reward",
           status: "SUCCESS",
           amount: bonusAmount,
-          message: "Signup Reward Bonus",
+          message: "Signup Reward Bonus (Withdrawable Only)",
           reference: `AET-REWARD-${userId.substring(0, 6).toUpperCase()}`,
           timestamp: FieldValue.serverTimestamp()
         });
@@ -345,7 +345,7 @@ authRoutes.post('/confirm-verification', async (req, res) => {
           userId: userId,
           type: 'deposit',
           title: "Signup Reward Unlocked! 🎉",
-          message: `Welcome to Aetheris! A $${bonusAmount} promotional Signup Reward has been credited to your wallet balance.`,
+          message: `Welcome to Aetheris! A $${bonusAmount} promotional Signup Reward has been credited to your wallet balance. Please note this bonus is withdrawable only.`,
           status: 'unread',
           createdAt: FieldValue.serverTimestamp()
         });

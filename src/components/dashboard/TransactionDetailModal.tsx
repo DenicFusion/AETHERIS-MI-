@@ -45,15 +45,12 @@ export const TransactionDetailModal: React.FC<TransactionDetailModalProps> = ({ 
       verificationSteps: transaction.verificationSteps || []
     };
 
+    if (!isOpen) return null;
+
     return (
-      <Dialog open={isOpen} onOpenChange={onClose}>
-        <DialogContent 
-          showCloseButton={false} 
-          className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-[95%] sm:w-full max-w-[560px] max-h-[90vh] bg-[#070b18] border border-white/10 text-white p-0 overflow-y-auto overscroll-contain shadow-[0_0_50px_rgba(0,0,0,0.85)] rounded-[24px] focus:outline-none scrollbar-thin scrollbar-thumb-white/10"
-        >
-          <WithdrawalReceipt withdrawal={normalizedWithdrawal as any} onClose={onClose} />
-        </DialogContent>
-      </Dialog>
+      <div className="fixed inset-0 z-50 bg-[#070b18] overflow-y-auto overscroll-contain p-4 sm:p-6 md:p-8 animate-in fade-in duration-200">
+        <WithdrawalReceipt withdrawal={normalizedWithdrawal as any} onClose={onClose} />
+      </div>
     );
   }
 
@@ -134,7 +131,22 @@ export const TransactionDetailModal: React.FC<TransactionDetailModalProps> = ({ 
       case 'FLEX_CYCLE_COMPLETED':
       case 'allocation_completed':
       case 'ALLOCATION_COMPLETED':
-        return { icon: Zap, color: 'text-emerald-400', bg: 'bg-emerald-500/10', label: 'Allocation Completed', symbol: '+', glow: 'shadow-[0_0_15px_rgba(16,185,129,0.3)]' };
+      case 'alloc_completed': {
+        const allocName = transaction.allocation_name || 
+          (transaction.allocation_number ? `Alloc_${transaction.allocation_number}` : 
+          (transaction.cycle ? `Alloc_${transaction.cycle}` : 
+          (transaction.sequence ? `Alloc_${transaction.sequence}` : 
+          (transaction.reference?.match(/alloc_(\d+)/i)?.[1] ? `Alloc_${transaction.reference.match(/alloc_(\d+)/i)[1]}` : null))));
+        return { 
+          icon: Zap, 
+          color: 'text-emerald-400', 
+          bg: 'bg-emerald-500/10', 
+          label: 'Allocation Completed', 
+          allocName: allocName,
+          symbol: '+', 
+          glow: 'shadow-[0_0_15px_rgba(16,185,129,0.3)]' 
+        };
+      }
       case 'flex_renewal_due':
       case 'FLEX_RENEWAL_DUE':
         return { icon: AlertCircle, color: 'text-amber-400', bg: 'bg-amber-400/10', label: 'Flex Renewal Due', symbol: '', glow: 'shadow-[0_0_15px_rgba(251,191,36,0.2)]' };
@@ -205,9 +217,34 @@ export const TransactionDetailModal: React.FC<TransactionDetailModalProps> = ({ 
   const dateStr = timestamp.toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' });
   const timeStr = timestamp.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', hour12: false });
 
+  const isAllocCompleted = ['allocation_completed', 'ALLOCATION_COMPLETED', 'flex_cycle_completed', 'FLEX_CYCLE_COMPLETED', 'alloc_completed'].includes(transaction.type) || !!transaction.allocation_name;
+  
+  let displayAmount = transaction.amount;
+  if (isAllocCompleted) {
+    if (transaction.payout != null && Number(transaction.payout) > 0) {
+      displayAmount = Number(transaction.payout);
+    } else if (transaction.allocation_value != null && Number(transaction.allocation_value) > 0) {
+      displayAmount = Number(transaction.allocation_value);
+    } else if (transaction.principal != null && transaction.profit != null && (Number(transaction.principal) + Number(transaction.profit) > 0)) {
+      displayAmount = Number(transaction.principal) + Number(transaction.profit);
+    } else if (transaction.capital_amount != null && transaction.profit_amount != null && (Number(transaction.capital_amount) + Number(transaction.profit_amount) > 0)) {
+      displayAmount = Number(transaction.capital_amount) + Number(transaction.profit_amount);
+    }
+  }
+
+  const isSignupReward = ['signup reward', 'signup_reward'].includes((transaction.type || '').toLowerCase()) || 
+    (transaction.message || '').toLowerCase().includes('signup reward');
+
+  let displayDescription = (details as any).allocName || transaction.message;
+  if (isSignupReward) {
+    displayDescription = transaction.message?.includes('Withdrawable Only')
+      ? transaction.message
+      : 'Signup Reward Bonus (Withdrawable Only)';
+  }
+
   const amountColor = isFailed 
     ? 'text-red-500' 
-    : (['deposit', 'profit_release', 'PROFIT_PAYOUT', 'MATURITY_PROFIT', 'Signup Reward', 'signup_reward'].includes(transaction.type) 
+    : (['deposit', 'profit_release', 'PROFIT_PAYOUT', 'MATURITY_PROFIT', 'Signup Reward', 'signup_reward', 'allocation_completed', 'ALLOCATION_COMPLETED', 'flex_cycle_completed', 'FLEX_CYCLE_COMPLETED', 'alloc_completed', 'commission_earned', 'referral_commission'].includes(transaction.type) || isAllocCompleted
         ? 'text-emerald-400' 
         : (['INTERVAL_DEDUCTION', 'deduction'].includes(transaction.type) ? 'text-slate-400' : 'text-white'));
 
@@ -229,7 +266,7 @@ export const TransactionDetailModal: React.FC<TransactionDetailModalProps> = ({ 
             </div>
             <div className="text-xl font-bold mb-1">{details.label}</div>
             <div className={`text-4xl font-black ${amountColor}`}>
-              {transaction.amount != null ? `${details.symbol}${formatCurrency(transaction.amount)}` : ''}
+              {displayAmount != null ? `${details.symbol}${formatCurrency(displayAmount)}` : ''}
             </div>
           </div>
 
@@ -244,6 +281,50 @@ export const TransactionDetailModal: React.FC<TransactionDetailModalProps> = ({ 
             </div>
             
             <div className="w-full h-px bg-white/5" />
+
+            {(displayDescription || isSignupReward) && (
+              <>
+                <div className="flex flex-col gap-1">
+                  <span className="text-xs text-muted-foreground font-semibold uppercase tracking-wider">Description</span>
+                  <span className="text-sm font-semibold text-emerald-400 font-mono">
+                    {displayDescription || 'Signup Reward Bonus (Withdrawable Only)'}
+                  </span>
+                  {isSignupReward && (
+                    <span className="text-[11px] font-medium text-amber-400/90 flex items-center gap-1.5 mt-0.5">
+                      <span className="inline-block w-1.5 h-1.5 rounded-full bg-amber-400"></span>
+                      Withdrawable only
+                    </span>
+                  )}
+                </div>
+                <div className="w-full h-px bg-white/5" />
+              </>
+            )}
+
+            {isAllocCompleted && (transaction.principal || transaction.capital_amount) && (transaction.profit || transaction.profit_amount) && (
+              <>
+                <div className="grid grid-cols-2 gap-2 text-xs font-mono bg-white/5 p-3 rounded-xl border border-white/5">
+                  <div>
+                    <span className="text-slate-400 text-[10px] uppercase block">Capital Allocated</span>
+                    <span className="text-white font-bold">{formatCurrency(transaction.principal || transaction.capital_amount)}</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-400 text-[10px] uppercase block">Profit Accrued</span>
+                    <span className="text-emerald-400 font-bold">+{formatCurrency(transaction.profit || transaction.profit_amount)}</span>
+                  </div>
+                </div>
+                <div className="w-full h-px bg-white/5" />
+              </>
+            )}
+
+            {(transaction.plan_name || transaction.plan) && (
+              <>
+                <div className="flex flex-col gap-1">
+                  <span className="text-xs text-muted-foreground font-semibold uppercase tracking-wider">Trading Plan</span>
+                  <span className="text-sm font-medium text-white uppercase">{transaction.plan_name || transaction.plan}</span>
+                </div>
+                <div className="w-full h-px bg-white/5" />
+              </>
+            )}
 
             <div className="flex flex-col gap-1">
               <span className="text-xs text-muted-foreground font-semibold uppercase tracking-wider">Date & Time</span>

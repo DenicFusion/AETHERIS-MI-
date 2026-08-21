@@ -12,6 +12,7 @@ import { auth, db } from '@/lib/firebase';
 import { sendPasswordResetEmail } from 'firebase/auth';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'motion/react';
+import { sanitizeErrorMessage } from '@/lib/firestore-errors';
 
 export function Auth() {
   const navigate = useNavigate();
@@ -434,19 +435,7 @@ export function Auth() {
         setOtpModalOpen(true);
       }
     } catch (err: any) {
-      let msg = err.message || 'Authentication failed';
-      const code = err.code || '';
-      
-      if (code === 'auth/email-already-in-use' || msg.includes('auth/email-already-in-use')) {
-        msg = 'This email is already registered. Please sign in instead.';
-      } else if (code === 'auth/invalid-credential' || msg.includes('auth/invalid-credential')) {
-        msg = 'Invalid email or password. Please try again.';
-      } else if (code === 'auth/user-not-found' || msg.includes('auth/user-not-found')) {
-        msg = 'No account found with this email.';
-      } else if (code === 'auth/wrong-password' || msg.includes('auth/wrong-password')) {
-        msg = 'Incorrect password.';
-      }
-      setError(msg);
+      setError(sanitizeErrorMessage(err));
     } finally {
       setIsLoading(false);
     }
@@ -687,7 +676,7 @@ export function Auth() {
       if (err.code === 'auth/cancelled-popup-request' || err.code === 'auth/popup-closed-by-user') {
         return;
       }
-      setError(err.message || 'Authentication failed');
+      setError(sanitizeErrorMessage(err));
     } finally {
       setIsLoading(false);
     }

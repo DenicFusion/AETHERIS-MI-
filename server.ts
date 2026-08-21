@@ -1922,17 +1922,27 @@ Do not write any chat, explanations, markdown formatting (like \`\`\`json), or t
          let totalProfitsChange = 0;
 
          if (!isFirstInterval && !prevProfitPaid) {
+             const allocSeq = intervalData.sequence - 1;
+             const allocName = `Alloc_${allocSeq}`;
+             const capitalAmount = Number(invData.amount_per_interval || (invData.total_amount / totalIntervals) || 568);
+             const totalAllocValue = capitalAmount + profitPerInterval;
+
              if (isFlexModel) {
-                 // For Flex: Accrue profit on contract, do not add to user profit balance until final maturity
+                 // For Flex: Completed allocation represents Capital + Profit (e.g. $568 + $254 = $822)
                  const profitTxRef = db.collection('transactions').doc();
                  t.set(profitTxRef, {
                      user_id: userId,
-                     type: "FLEX_CYCLE_COMPLETED",
-                     amount: profitPerInterval,
+                     type: "allocation_completed",
+                     allocation_name: allocName,
+                     allocation_number: allocSeq,
+                     amount: totalAllocValue,
+                     capital_amount: capitalAmount,
+                     profit_amount: profitPerInterval,
+                     allocation_value: totalAllocValue,
                      status: "SUCCESS",
-                     reference: `${intervalDoc.id}_profit`,
+                     reference: `${intervalDoc.id}_alloc_${allocSeq}`,
                      plan_name: invData.plan || 'Flex Plan',
-                     message: `Flex Cycle ${intervalData.sequence - 1} Completed. Profit: $${profitPerInterval.toFixed(2)} accrued (Unlocks at final completion).`,
+                     message: `${allocName} Completed. Capital: $${capitalAmount.toFixed(2)} + Profit: $${profitPerInterval.toFixed(2)} = $${totalAllocValue.toFixed(2)}`,
                      timestamp: admin.firestore.FieldValue.serverTimestamp()
                  });
                  t.update(intervalRef, { prev_profit_paid: true, accrued_profit: profitPerInterval });

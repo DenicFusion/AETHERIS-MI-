@@ -164,4 +164,25 @@ export class ActivationEngine {
             await db.runTransaction(run);
         }
     }
+
+    static async processAllPendingActivations(db: admin.firestore.Firestore) {
+        try {
+            const pendingQuery = await db.collection('investments')
+                .where('status', '==', 'pending_activation')
+                .get();
+            if (pendingQuery.empty) return;
+            
+            // Get unique user IDs with pending activations
+            const userIds = Array.from(new Set(pendingQuery.docs.map(d => d.data().user_id).filter(Boolean)));
+            for (const uid of userIds) {
+                try {
+                    await this.processPendingActivations(db, uid);
+                } catch (userErr) {
+                    console.error(`[ActivationEngine] Failed to process pending activations for user ${uid}:`, userErr);
+                }
+            }
+        } catch (err) {
+            console.error('[ActivationEngine] Error in processAllPendingActivations:', err);
+        }
+    }
 }

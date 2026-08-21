@@ -224,7 +224,7 @@ export class IntervalProcessor {
                             user_id: userId,
                             type: "FLEX_CYCLE_COMPLETED",
                             status: "SUCCESS",
-                            amount: cycleProfit,
+                            amount: cyclePayout,
                             principal: recurringPrincipal,
                             profit: cycleProfit,
                             payout: cyclePayout,
@@ -233,7 +233,7 @@ export class IntervalProcessor {
                             plan: invData.plan || "Flex Plan",
                             model: 'flex',
                             reference: invId,
-                            message: `Flex Cycle ${seq - 1} Completed. Cycle Profit: $${cycleProfit.toFixed(2)} accrued (Unlocks at final completion).`,
+                            message: `Allocation ${seq - 1} Completed. Est. Payout: $${cyclePayout.toFixed(2)} (Capital: $${recurringPrincipal.toFixed(2)} + Profit: $${cycleProfit.toFixed(2)})`,
                             timestamp: admin.firestore.Timestamp.fromMillis(currentTime + (seq * 10000))
                         });
 

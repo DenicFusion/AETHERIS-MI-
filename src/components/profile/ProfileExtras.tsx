@@ -59,8 +59,8 @@ export function PaymentMethodsSettings({ user, onBack }: GenericProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [adding, setAdding] = useState(false);
 
-  // Tab: 'crypto' or 'bank'
-  const [activeTab, setActiveTab] = useState<'crypto' | 'bank'>('crypto');
+  // Tab: 'crypto' | 'bank' | 'paypal' | 'skrill' | 'neteller'
+  const [activeTab, setActiveTab] = useState<'crypto' | 'bank' | 'paypal' | 'skrill' | 'neteller'>('crypto');
 
   // Crypto form state
   const [cryptoNetwork, setCryptoNetwork] = useState('USDT (TRC20)');
@@ -72,6 +72,15 @@ export function PaymentMethodsSettings({ user, onBack }: GenericProps) {
   const [accountHolder, setAccountHolder] = useState('');
   const [iban, setIban] = useState('');
   const [swift, setSwift] = useState('');
+
+  // PayPal form state
+  const [paypalEmail, setPaypalEmail] = useState('');
+
+  // Skrill form state
+  const [skrillEmail, setSkrillEmail] = useState('');
+
+  // Neteller form state
+  const [netellerId, setNetellerId] = useState('');
 
   // Real-time Firestore payment methods listener
   useEffect(() => {
@@ -108,13 +117,13 @@ export function PaymentMethodsSettings({ user, onBack }: GenericProps) {
         });
         setAdding(false);
         setWalletAddress('');
-        toast.success("Payment method saved");
+        toast.success("Crypto wallet saved");
       } catch (e) {
         toast.error("Failed to add payment method");
       } finally {
         setIsLoading(false);
       }
-    } else {
+    } else if (activeTab === 'bank') {
       if (!bankName.trim()) return toast.error("Please enter bank name");
       if (!accountHolder.trim()) return toast.error("Please enter account holder name");
       if (!iban.trim()) return toast.error("Please enter IBAN / Account Number");
@@ -136,7 +145,67 @@ export function PaymentMethodsSettings({ user, onBack }: GenericProps) {
         setAccountHolder('');
         setIban('');
         setSwift('');
-        toast.success("Payment method saved");
+        toast.success("Bank account saved");
+      } catch (e) {
+        toast.error("Failed to add payment method");
+      } finally {
+        setIsLoading(false);
+      }
+    } else if (activeTab === 'paypal') {
+      if (!paypalEmail.trim() || !paypalEmail.includes('@')) return toast.error("Please enter a valid PayPal email");
+      setIsLoading(true);
+      try {
+        await addDoc(collection(db, "user_payment_methods"), {
+          userId: user.uid,
+          type: 'paypal',
+          email: paypalEmail.trim(),
+          details: `Email: ${paypalEmail.trim()}`,
+          accountName: `PayPal (${paypalEmail.trim()})`,
+          createdAt: new Date().toISOString()
+        });
+        setAdding(false);
+        setPaypalEmail('');
+        toast.success("PayPal account saved");
+      } catch (e) {
+        toast.error("Failed to add payment method");
+      } finally {
+        setIsLoading(false);
+      }
+    } else if (activeTab === 'skrill') {
+      if (!skrillEmail.trim() || !skrillEmail.includes('@')) return toast.error("Please enter a valid Skrill email");
+      setIsLoading(true);
+      try {
+        await addDoc(collection(db, "user_payment_methods"), {
+          userId: user.uid,
+          type: 'skrill',
+          email: skrillEmail.trim(),
+          details: `Email: ${skrillEmail.trim()}`,
+          accountName: `Skrill (${skrillEmail.trim()})`,
+          createdAt: new Date().toISOString()
+        });
+        setAdding(false);
+        setSkrillEmail('');
+        toast.success("Skrill account saved");
+      } catch (e) {
+        toast.error("Failed to add payment method");
+      } finally {
+        setIsLoading(false);
+      }
+    } else if (activeTab === 'neteller') {
+      if (!netellerId.trim()) return toast.error("Please enter Neteller Account ID / Email");
+      setIsLoading(true);
+      try {
+        await addDoc(collection(db, "user_payment_methods"), {
+          userId: user.uid,
+          type: 'neteller',
+          accountId: netellerId.trim(),
+          details: `Neteller ID/Email: ${netellerId.trim()}`,
+          accountName: `Neteller (${netellerId.trim()})`,
+          createdAt: new Date().toISOString()
+        });
+        setAdding(false);
+        setNetellerId('');
+        toast.success("Neteller account saved");
       } catch (e) {
         toast.error("Failed to add payment method");
       } finally {
@@ -149,7 +218,21 @@ export function PaymentMethodsSettings({ user, onBack }: GenericProps) {
     switch (type) {
       case 'bank': return <Landmark className="w-4 h-4 text-emerald-400" />;
       case 'crypto': return <Wallet className="w-4 h-4 text-sky-400" />;
+      case 'paypal': return <CreditCard className="w-4 h-4 text-blue-400" />;
+      case 'skrill': return <CreditCard className="w-4 h-4 text-fuchsia-400" />;
+      case 'neteller': return <CreditCard className="w-4 h-4 text-lime-400" />;
       default: return <CreditCard className="w-4 h-4 text-purple-400" />;
+    }
+  };
+
+  const getMethodTitle = (m: any) => {
+    switch (m.type) {
+      case 'crypto': return `Crypto Wallet ${m.network ? `(${m.network})` : ''}`;
+      case 'bank': return `Bank Account ${m.bankName ? `- ${m.bankName}` : ''}`;
+      case 'paypal': return 'PayPal Account';
+      case 'skrill': return 'Skrill Account';
+      case 'neteller': return 'Neteller Account';
+      default: return m.accountName || 'Payment Method';
     }
   };
 
@@ -167,7 +250,7 @@ export function PaymentMethodsSettings({ user, onBack }: GenericProps) {
           <div className="bg-[#0c142b] border border-[#182344] rounded-3xl p-8 text-center text-slate-400 text-sm">
             <CreditCard className="w-10 h-10 text-slate-500 mx-auto mb-3 opacity-60" />
             <p className="font-semibold text-slate-300 mb-1">No saved payment methods</p>
-            <p className="text-xs text-slate-400">Add a bank account or crypto wallet for withdrawals.</p>
+            <p className="text-xs text-slate-400">Add a bank account, crypto wallet, or digital wallet for withdrawals.</p>
           </div>
         )}
         
@@ -179,12 +262,10 @@ export function PaymentMethodsSettings({ user, onBack }: GenericProps) {
                   {getTypeIcon(m.type)}
                 </div>
                 <span className="text-white font-bold uppercase tracking-wider text-xs">
-                  {m.type === 'crypto' ? 'Crypto Wallet' : 'Bank Account'}
-                  {m.network && ` (${m.network})`}
-                  {m.bankName && ` - ${m.bankName}`}
+                  {getMethodTitle(m)}
                 </span>
               </div>
-              {m.accountName && <div className="text-xs text-slate-300 pl-9 font-medium">{m.accountName}</div>}
+              {m.accountName && m.type === 'bank' && <div className="text-xs text-slate-300 pl-9 font-medium">{m.accountName}</div>}
               <div className="text-xs text-slate-400 font-mono break-all pl-9">{m.details}</div>
             </div>
             <button
@@ -210,33 +291,29 @@ export function PaymentMethodsSettings({ user, onBack }: GenericProps) {
             </button>
           </div>
 
-          {/* Top Tabs: Crypto Wallet vs Bank Account */}
-          <div className="grid grid-cols-2 gap-3">
-            <button
-              type="button"
-              onClick={() => setActiveTab('crypto')}
-              className={`p-3.5 rounded-2xl flex items-center justify-center gap-2.5 transition-all font-bold text-xs border ${
-                activeTab === 'crypto'
-                  ? 'bg-[#0f2142] border-[#38bdf8] text-[#38bdf8] shadow-lg shadow-[#38bdf8]/10'
-                  : 'bg-[#070c1b] border-[#182344] text-slate-400 hover:text-slate-200 hover:bg-[#0c142b]'
-              }`}
-            >
-              <Wallet className="w-4 h-4 shrink-0" />
-              <span>Crypto Wallet</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setActiveTab('bank')}
-              className={`p-3.5 rounded-2xl flex items-center justify-center gap-2.5 transition-all font-bold text-xs border ${
-                activeTab === 'bank'
-                  ? 'bg-[#0f2142] border-[#38bdf8] text-[#38bdf8] shadow-lg shadow-[#38bdf8]/10'
-                  : 'bg-[#070c1b] border-[#182344] text-slate-400 hover:text-slate-200 hover:bg-[#0c142b]'
-              }`}
-            >
-              <Landmark className="w-4 h-4 shrink-0" />
-              <span>Bank Account</span>
-            </button>
+          {/* Method Type Pills Selector */}
+          <div className="grid grid-cols-3 gap-2">
+            {[
+              { key: 'crypto', label: 'Crypto', icon: Wallet },
+              { key: 'bank', label: 'Bank', icon: Landmark },
+              { key: 'paypal', label: 'PayPal', icon: CreditCard },
+              { key: 'skrill', label: 'Skrill', icon: CreditCard },
+              { key: 'neteller', label: 'Neteller', icon: CreditCard },
+            ].map(({ key, label, icon: Icon }) => (
+              <button
+                key={key}
+                type="button"
+                onClick={() => setActiveTab(key as any)}
+                className={`p-2.5 rounded-xl flex items-center justify-center gap-1.5 transition-all font-bold text-xs border ${
+                  activeTab === key
+                    ? 'bg-[#0f2142] border-[#38bdf8] text-[#38bdf8] shadow-md shadow-[#38bdf8]/10'
+                    : 'bg-[#070c1b] border-[#182344] text-slate-400 hover:text-slate-200 hover:bg-[#0c142b]'
+                }`}
+              >
+                <Icon className="w-3.5 h-3.5 shrink-0" />
+                <span>{label}</span>
+              </button>
+            ))}
           </div>
 
           {/* Crypto Wallet Form */}
@@ -255,7 +332,7 @@ export function PaymentMethodsSettings({ user, onBack }: GenericProps) {
 
                 {isNetworkOpen && (
                   <div className="absolute left-0 right-0 top-full mt-1.5 z-50 bg-[#0a1126] border border-[#182344] rounded-2xl shadow-2xl p-1.5 space-y-1 animate-in fade-in slide-in-from-top-2 duration-150">
-                    {['BTC', 'ETH (ERC20)', 'USDT (ERC20)', 'USDT (TRC20)', 'SOL'].map((net) => (
+                    {['BTC', 'ETH (ERC20)', 'USDT (ERC20)', 'USDT (TRC20)', 'SOL', 'LTC'].map((net) => (
                       <button
                         key={net}
                         type="button"
@@ -284,7 +361,7 @@ export function PaymentMethodsSettings({ user, onBack }: GenericProps) {
                     type="text"
                     value={walletAddress}
                     onChange={e => setWalletAddress(e.target.value)}
-                    placeholder="Paste or scan address"
+                    placeholder="Paste wallet address"
                     className="w-full bg-[#070b13] border border-[#182344] focus:border-[#38bdf8] rounded-xl pl-3.5 pr-10 py-3.5 text-white text-xs font-mono focus:outline-none"
                   />
                   <button
@@ -308,11 +385,10 @@ export function PaymentMethodsSettings({ user, onBack }: GenericProps) {
                 </div>
               </div>
 
-              {/* Warning Card */}
               <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-3.5 flex gap-3 items-start">
                 <ShieldCheck className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
                 <p className="text-[11px] text-amber-200/90 leading-relaxed font-medium">
-                  Double-check the network matches your wallet. Sending on the wrong network can result in permanent loss of funds.
+                  Ensure the destination address and selected network match exactly before confirming.
                 </p>
               </div>
             </div>
@@ -327,7 +403,7 @@ export function PaymentMethodsSettings({ user, onBack }: GenericProps) {
                   type="text"
                   value={bankName}
                   onChange={e => setBankName(e.target.value)}
-                  placeholder="e.g., Chase Bank"
+                  placeholder="e.g., Chase Bank, Barclays"
                   className="w-full bg-[#070b13] border border-[#182344] focus:border-[#38bdf8] rounded-xl p-3.5 text-white text-xs font-medium focus:outline-none"
                 />
               </div>
@@ -338,7 +414,7 @@ export function PaymentMethodsSettings({ user, onBack }: GenericProps) {
                   type="text"
                   value={accountHolder}
                   onChange={e => setAccountHolder(e.target.value)}
-                  placeholder="Full name on account"
+                  placeholder="Full name on bank account"
                   className="w-full bg-[#070b13] border border-[#182344] focus:border-[#38bdf8] rounded-xl p-3.5 text-white text-xs font-medium focus:outline-none"
                 />
               </div>
@@ -349,13 +425,13 @@ export function PaymentMethodsSettings({ user, onBack }: GenericProps) {
                   type="text"
                   value={iban}
                   onChange={e => setIban(e.target.value)}
-                  placeholder="GB29 NWBK 6016 1331 9268 19"
+                  placeholder="e.g., GB29 NWBK 6016 1331 9268 19"
                   className="w-full bg-[#070b13] border border-[#182344] focus:border-[#38bdf8] rounded-xl p-3.5 text-white text-xs font-mono focus:outline-none"
                 />
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-[11px] font-bold uppercase tracking-wider text-slate-400">SWIFT / BIC</label>
+                <label className="text-[11px] font-bold uppercase tracking-wider text-slate-400">SWIFT / BIC (OPTIONAL)</label>
                 <input
                   type="text"
                   value={swift}
@@ -364,6 +440,57 @@ export function PaymentMethodsSettings({ user, onBack }: GenericProps) {
                   className="w-full bg-[#070b13] border border-[#182344] focus:border-[#38bdf8] rounded-xl p-3.5 text-white text-xs font-mono focus:outline-none"
                 />
               </div>
+            </div>
+          )}
+
+          {/* PayPal Form */}
+          {activeTab === 'paypal' && (
+            <div className="space-y-3.5 pt-1">
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-bold uppercase tracking-wider text-slate-400">PAYPAL EMAIL ADDRESS</label>
+                <input
+                  type="email"
+                  value={paypalEmail}
+                  onChange={e => setPaypalEmail(e.target.value)}
+                  placeholder="your-paypal-email@example.com"
+                  className="w-full bg-[#070b13] border border-[#182344] focus:border-[#38bdf8] rounded-xl p-3.5 text-white text-xs font-medium focus:outline-none"
+                />
+              </div>
+              <p className="text-[11px] text-slate-400">Payout will be transferred to your registered PayPal email address.</p>
+            </div>
+          )}
+
+          {/* Skrill Form */}
+          {activeTab === 'skrill' && (
+            <div className="space-y-3.5 pt-1">
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-bold uppercase tracking-wider text-slate-400">SKRILL EMAIL ADDRESS</label>
+                <input
+                  type="email"
+                  value={skrillEmail}
+                  onChange={e => setSkrillEmail(e.target.value)}
+                  placeholder="your-skrill-email@example.com"
+                  className="w-full bg-[#070b13] border border-[#182344] focus:border-[#38bdf8] rounded-xl p-3.5 text-white text-xs font-medium focus:outline-none"
+                />
+              </div>
+              <p className="text-[11px] text-slate-400">Payout will be transferred directly to your Skrill account.</p>
+            </div>
+          )}
+
+          {/* Neteller Form */}
+          {activeTab === 'neteller' && (
+            <div className="space-y-3.5 pt-1">
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-bold uppercase tracking-wider text-slate-400">NETELLER ACCOUNT ID OR EMAIL</label>
+                <input
+                  type="text"
+                  value={netellerId}
+                  onChange={e => setNetellerId(e.target.value)}
+                  placeholder="Account ID or registered email"
+                  className="w-full bg-[#070b13] border border-[#182344] focus:border-[#38bdf8] rounded-xl p-3.5 text-white text-xs font-medium focus:outline-none"
+                />
+              </div>
+              <p className="text-[11px] text-slate-400">Payout will be transferred to your Neteller account wallet.</p>
             </div>
           )}
 
@@ -382,7 +509,7 @@ export function PaymentMethodsSettings({ user, onBack }: GenericProps) {
               disabled={isLoading}
               className="flex-1 bg-[#38bdf8] hover:bg-[#0284c7] text-slate-950 rounded-xl h-12 text-xs font-extrabold uppercase tracking-wider shadow-lg shadow-[#38bdf8]/20 transition-all disabled:opacity-50"
             >
-              {isLoading ? "Saving..." : "Save"}
+              {isLoading ? "Saving..." : "Save Method"}
             </button>
           </div>
         </div>

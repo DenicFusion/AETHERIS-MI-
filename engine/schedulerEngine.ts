@@ -1,5 +1,6 @@
 import admin from 'firebase-admin';
 import { InvestmentEngine } from './InvestmentEngine';
+import { ActivationEngine } from './activationEngine';
 import { ActivationReminderEngine } from './activationReminderEngine';
 import { SupportTicketAutomation } from './supportTicketAutomation';
 
@@ -12,7 +13,19 @@ export class SchedulerEngine {
             const nowAsTimestamp = admin.firestore.Timestamp.fromMillis(nowMillis);
 
             // ==========================================
-            // Scheduled Pro Plan Progress & Settlement Service
+            // 1. Process Pending Trade Activations
+            // Automatically activates trades as soon as user balance meets requirement
+            // ==========================================
+            await ActivationEngine.processAllPendingActivations(db);
+
+            // ==========================================
+            // 2. Process Paused / Overdue Trade Plans
+            // Automatically resumes trade operations as soon as user balance is available
+            // ==========================================
+            await this.processStuckPlans(db, nowMillis);
+
+            // ==========================================
+            // 3. Scheduled Pro Plan Progress & Settlement Service
             // ==========================================
             const activeProPlans = await db.collection('investments')
                 .where('status', '==', 'active')
@@ -97,9 +110,8 @@ export class SchedulerEngine {
             // Expire pending investments older than 24 hours
             await this.expirePendingInvestments(db, nowMillis);
 
-            // Check paused/overdue plans on every 15 minutes to save quota, rather than every minute 
+            // Periodic automation tasks every 15 minutes
             if (new Date(nowMillis).getMinutes() % 15 === 0) {
-                await this.processStuckPlans(db, nowMillis);
                 await ActivationReminderEngine.runReminders(db);
                 await SupportTicketAutomation.runAutomation(db);
             }

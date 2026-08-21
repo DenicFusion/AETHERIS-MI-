@@ -12,6 +12,7 @@ import {
   X, 
   Loader2, 
   ArrowLeft,
+  ChevronLeft,
   Camera,
   UploadCloud,
   Volume2,
@@ -506,16 +507,24 @@ export function WithdrawalReceipt({ withdrawal: initialWithdrawal, onClose, onRe
   const currentStatus = statusConfig[status] || statusConfig.pending;
 
   return (
-    <div className="text-white w-full max-w-[580px] mx-auto bg-[#070b18] p-4 sm:p-6 md:p-8 pb-14 sm:pb-16 relative">
+    <div className="text-white w-full max-w-[580px] mx-auto bg-[#070b18] p-4 sm:p-6 md:p-8 pb-14 sm:pb-16 relative rounded-3xl border border-white/5 shadow-2xl">
       
-      {/* Top action bar - Single unified clean close button */}
+      {/* Top action bar - Clean navigation header */}
       {onClose && (
-        <div className="flex justify-end items-center mb-4">
+        <div className="flex justify-between items-center mb-4">
+          <button 
+            type="button"
+            onClick={onClose}
+            aria-label="Back"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white transition-all border border-white/10 cursor-pointer text-xs font-bold uppercase tracking-wider"
+          >
+            <ChevronLeft className="w-4 h-4" /> Back
+          </button>
           <button 
             type="button"
             onClick={onClose}
             aria-label="Close receipt"
-            className="w-8 h-8 rounded-full flex items-center justify-center bg-white/10 hover:bg-white/20 text-slate-300 hover:text-white transition-all border border-white/10 cursor-pointer shadow-sm active:scale-95"
+            className="w-8 h-8 rounded-full flex items-center justify-center bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white transition-all border border-white/10 cursor-pointer shadow-sm active:scale-95"
           >
             <X className="w-4 h-4" />
           </button>

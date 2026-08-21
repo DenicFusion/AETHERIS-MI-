@@ -111,14 +111,22 @@ export const TransactionCard: React.FC<TransactionCardProps> = ({ transaction, o
         };
       case 'flex_cycle_completed':
       case 'allocation_completed':
+      case 'alloc_completed': {
+        const allocName = transaction.allocation_name || 
+          (transaction.allocation_number ? `Alloc_${transaction.allocation_number}` : 
+          (transaction.cycle ? `Alloc_${transaction.cycle}` : 
+          (transaction.sequence ? `Alloc_${transaction.sequence}` : 
+          (transaction.reference?.match(/alloc_(\d+)/i)?.[1] ? `Alloc_${transaction.reference.match(/alloc_(\d+)/i)[1]}` : null))));
         return {
           icon: Zap,
           color: 'text-emerald-400',
           bg: 'bg-emerald-500/10',
           glow: 'shadow-[0_0_15px_rgba(16,185,129,0.3)]',
           label: 'Allocation Completed',
+          allocName: allocName,
           symbol: '+',
         };
+      }
       case 'flex_renewal_due':
         return {
           icon: Clock,
@@ -256,9 +264,26 @@ export const TransactionCard: React.FC<TransactionCardProps> = ({ transaction, o
   const timeStr = timestamp.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', hour12: false });
 
   const typeLower = (transaction.type || '').toLowerCase();
+  const isSignupReward = typeLower === 'signup_reward' || typeLower === 'signup reward' || (transaction.message || '').toLowerCase().includes('signup reward');
+  const isAllocCompleted = ['profit_release', 'profit_payout', 'maturity_profit', 'cycle_distribution', 'deposit', 'signup_reward', 'signup reward', 'allocation_completed', 'flex_cycle_completed', 'alloc_completed', 'commission_earned', 'referral_commission', 'reward_cash_credit'].includes(typeLower);
+
+  const isAllocationCompletedType = ['allocation_completed', 'flex_cycle_completed', 'alloc_completed'].includes(typeLower) || !!transaction.allocation_name;
+  let displayAmount = transaction.amount;
+  if (isAllocationCompletedType) {
+    if (transaction.payout != null && Number(transaction.payout) > 0) {
+      displayAmount = Number(transaction.payout);
+    } else if (transaction.allocation_value != null && Number(transaction.allocation_value) > 0) {
+      displayAmount = Number(transaction.allocation_value);
+    } else if (transaction.principal != null && transaction.profit != null && (Number(transaction.principal) + Number(transaction.profit) > 0)) {
+      displayAmount = Number(transaction.principal) + Number(transaction.profit);
+    } else if (transaction.capital_amount != null && transaction.profit_amount != null && (Number(transaction.capital_amount) + Number(transaction.profit_amount) > 0)) {
+      displayAmount = Number(transaction.capital_amount) + Number(transaction.profit_amount);
+    }
+  }
+
   const amountColor = isFailed 
      ? 'text-red-500' // failed transactions in red
-     : (['profit_release', 'profit_payout', 'maturity_profit', 'cycle_distribution', 'deposit', 'signup_reward', 'signup reward'].includes(typeLower) 
+     : (isAllocCompleted 
          ? 'text-emerald-400 font-extrabold' 
          : 'text-white font-extrabold');
 
@@ -282,10 +307,20 @@ export const TransactionCard: React.FC<TransactionCardProps> = ({ transaction, o
         </div>
         <div>
           <div className="text-base font-bold text-foreground mb-0.5">{details.label}</div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border ${statusColor}`}>
               {displayStatus}
             </span>
+            {isSignupReward && (
+              <span className="text-[10px] font-bold text-amber-400 bg-amber-400/10 border border-amber-400/25 px-2 py-0.5 rounded-full">
+                Withdrawable Only
+              </span>
+            )}
+            {(details as any).allocName && (
+              <span className="text-[11px] font-semibold text-emerald-400 font-mono">
+                {(details as any).allocName}
+              </span>
+            )}
             <span className="text-xs text-muted-foreground font-medium">
               {dateStr} • {timeStr}
             </span>
@@ -295,7 +330,7 @@ export const TransactionCard: React.FC<TransactionCardProps> = ({ transaction, o
       
       <div className="text-right">
         <div className={`text-xl font-bold ${amountColor}`}>
-          {transaction.amount != null ? `${details.symbol}${formatCurrency(transaction.amount)}` : ''}
+          {displayAmount != null ? `${details.symbol}${formatCurrency(displayAmount)}` : ''}
         </div>
       </div>
     </motion.div>

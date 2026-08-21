@@ -138,7 +138,7 @@ import { ProfitBreakdownChart } from "@/components/dashboard/ProfitBreakdownChar
 import { useFCMToken } from "@/hooks/useFCMToken";
 import { CancelTradeConfirmModal } from "@/components/dashboard/CancelTradeConfirmModal";
 import { QuickTradePanel } from "@/components/dashboard/QuickTradePanel";
-import { QuickTradeConfirmModal } from "@/components/dashboard/QuickTradeConfirmModal";
+import { TabQuickTrade } from "@/components/dashboard/TabQuickTrade";
 import { QuickTradeActiveCard } from "@/components/dashboard/QuickTradeActiveCard";
 
 import { TradingEngineService } from "@/lib/TradingEngineService";
@@ -155,10 +155,10 @@ export function Dashboard() {
     useCurrency();
   const previousTabRef = useRef<string | null>(null);
   const [searchParams, setSearchParams] = useSearchParams();
-  const activeTab = (searchParams.get("tab") as "home" | "plan" | "payments" | "rewards" | "profile" | "referrals" | "deposit" | "support" | "withdraw") || "home";
+  const activeTab = (searchParams.get("tab") as "home" | "plan" | "payments" | "rewards" | "profile" | "referrals" | "deposit" | "support" | "withdraw" | "quick_trade" | "withdrawal_receipt") || "home";
 
   const navigateTab = (
-    tab: "home" | "plan" | "payments" | "rewards" | "profile" | "referrals" | "deposit" | "support" | "withdraw",
+    tab: "home" | "plan" | "payments" | "rewards" | "profile" | "referrals" | "deposit" | "support" | "withdraw" | "quick_trade" | "withdrawal_receipt",
   ) => {
     if (tab === activeTab) return;
     previousTabRef.current = activeTab;
@@ -236,14 +236,16 @@ export function Dashboard() {
   }, []);
 
   const handleStartQuickTrade = (amount: number) => {
-    setQuickTradeModalAmount(amount);
+    setSearchParams({ tab: "quick_trade", amount: String(amount) });
   };
 
   const handleConfirmQuickTrade = async () => {
     if (!quickTradeModalAmount || !auth.currentUser) return;
     setIsSubmittingQuickTrade(true);
     try {
-      const userBal = userData?.balance ?? userData?.wallet_balance ?? 0;
+      const walletBal = userData?.wallet_balance ?? userData?.balance ?? 0;
+      const signupBonus = userData?.signup_reward_amount || 0;
+      const userBal = Math.max(0, walletBal - signupBonus);
       const initialStatus = userBal >= quickTradeModalAmount ? "active" : "pending_activation";
       const cycleDays = globalConfig?.quickTradeCycleDays !== undefined ? Number(globalConfig.quickTradeCycleDays) : 3;
       const returnPct = globalConfig?.quickTradeReturnPct !== undefined ? Number(globalConfig.quickTradeReturnPct) : 8.4;
@@ -276,7 +278,7 @@ export function Dashboard() {
           min: quickTradeModalAmount,
         });
         setSearchParams({ tab: "deposit", amount: String(quickTradeModalAmount), plan: "QUICK TRADE" });
-        toast.info(`Insufficient balance ($${userBal.toFixed(2)} available). Redirecting to deposit page...`);
+        toast.info("Insufficient trading balance. Please fund your Trading Balance to continue.");
       } else {
         toast.success(`⚡ Quick Trade activated! Your ${cycleDays}-day AI trading cycle has begun.`);
       }
@@ -746,6 +748,8 @@ export function Dashboard() {
 
   const walletBalance = userData?.wallet_balance ?? userData?.balance ?? 0;
   const profitBalance = userData?.profit_balance ?? 0;
+  const signupBonus = userData?.signup_reward_amount || 0;
+  const tradingBalance = Math.max(0, walletBalance - signupBonus);
   const pendingWithdrawals = transactions
     .filter((t: any) => t.type === "withdrawal" && t.status === "pending")
     .reduce((sum: number, t: any) => sum + t.amount, 0);
@@ -949,7 +953,7 @@ export function Dashboard() {
 
           {activeTab === "withdraw" && (
             <TabWithdrawal
-              availableBalance={walletBalance - pendingWithdrawals}
+              availableBalance={tradingBalance - pendingWithdrawals}
               profitBalance={profitBalance}
               referralBalance={userData?.referralBalance || 0}
               preferredCurrency={preferredCurrency}
@@ -958,16 +962,21 @@ export function Dashboard() {
               onNavigateToInvest={() => navigateTab("plan")}
             />
           )}
+
+          {activeTab === "quick_trade" && (
+            <TabQuickTrade
+              amount={Number(searchParams.get("amount")) || 450}
+              userBalance={tradingBalance}
+              userData={userData}
+              globalConfig={globalConfig}
+              goBack={navigateBack}
+              navigateTab={navigateTab}
+              setPendingPlanForDeposit={setPendingPlanForDeposit}
+              setSearchParams={setSearchParams}
+            />
+          )}
         </div>
       </div>
-      <QuickTradeConfirmModal
-        isOpen={quickTradeModalAmount !== null}
-        onClose={() => setQuickTradeModalAmount(null)}
-        onConfirm={handleConfirmQuickTrade}
-        amount={quickTradeModalAmount || 100}
-        userBalance={userData?.balance ?? userData?.wallet_balance ?? 0}
-        isSubmitting={isSubmittingQuickTrade}
-      />
     </div>
   );
 }
@@ -1016,7 +1025,7 @@ function TabHome({
       <div className="space-y-4">
         {/* QUICK TRADE CARD */}
         <QuickTradePanel
-          userBalance={userData?.balance ?? userData?.wallet_balance ?? 0}
+          userBalance={Math.max(0, (userData?.wallet_balance ?? userData?.balance ?? 0) - (userData?.signup_reward_amount || 0))}
           onStartTrade={handleStartQuickTrade}
           onExploreHigherTrades={isHomeView ? openPlan : undefined}
         />
@@ -1720,12 +1729,35 @@ function TabHome({
                   </span>
                 </div>
 
-                {overdueCount > 0 && (
-                   <div className="bg-red-500/10 border border-red-500/20 text-red-500 text-[11px] font-bold px-3 py-2 rounded-lg flex items-center gap-2">
-                     <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
-                     You have {overdueCount} overdue interval{overdueCount > 1 ? 's' : ''} requiring payment to keep yield active.
-                   </div>
+            {(() => {
+              let totalOutstanding = 0;
+              if (intervalsByInv) {
+                Object.values(intervalsByInv).forEach((intervalsArray: any) => {
+                   intervalsArray.forEach((i: any) => {
+                      const dueT = i.due_date?.toDate ? i.due_date.toDate().getTime() : (i.due_date ? new Date(i.due_date).getTime() : 0);
+                      if (i.status === 'overdue' || (i.status === 'pending' && dueT <= Date.now())) {
+                          const recurringAmt = Number(i.amount_due || i.amount || 0);
+                          totalOutstanding += recurringAmt;
+                      }
+                   });
+                });
+              }
+              investments.forEach((inv: any) => {
+                if (inv.status === 'pending_activation') {
+                  totalOutstanding += Number(inv.amount_per_interval || inv.first_interval_amount || inv.total_amount || 0);
+                }
+              });
+              return (
+                <>
+                {totalOutstanding > 0 && (
+                  <div className="bg-red-500/10 border border-red-500/20 text-red-500 text-[11px] font-bold px-3 py-2 rounded-lg flex items-center gap-2">
+                    <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+                    You have {formatCurrency(totalOutstanding)} in outstanding funding required to keep yield active.
+                  </div>
                 )}
+                </>
+              );
+            })()}
 
             <div className="flex flex-col gap-3">
               {investments
@@ -1751,20 +1783,23 @@ function TabHome({
                 else if (isOverdue) warningLabel = 'OVERDUE';
                 else if (isCompleted) warningLabel = 'COMPLETED ✅';
 
-                let outstandingFunds = isPending ? (inv.amount_per_interval || inv.total_amount || 0) : 0;
-                if (isPaused || isOverdue) {
+                let outstandingFunds = 0;
+                if (isPending) {
+                  outstandingFunds = Number(inv.amount_per_interval || inv.first_interval_amount || inv.total_amount || 0);
+                } else if (isPaused || isOverdue || inv.status === 'active') {
                    const dueIntervals = (intervalsByInv?.[inv.id] || []).filter(
                       (i: any) => {
-                          const dueT = i.due_date?.toDate ? i.due_date.toDate().getTime() : new Date(i.due_date).getTime();
+                          const dueT = i.due_date?.toDate ? i.due_date.toDate().getTime() : (i.due_date ? new Date(i.due_date).getTime() : 0);
                           return (i.status === "pending" || i.status === "overdue") && dueT <= Date.now();
                       }
                    );
                    dueIntervals.forEach((i: any) => {
-                      const dueT = i.due_date?.toDate ? i.due_date.toDate().getTime() : new Date(i.due_date).getTime();
-                      const isOvd = (Date.now() - dueT) > 12 * 60 * 60 * 1000;
-                      outstandingFunds += (i.amount_due || 0) + (isOvd ? 15 : 0);
+                      const recurringAmt = Number(i.amount_due || i.amount || inv.amount_per_interval || inv.recurring_principal || ((inv.total_amount || 0) / (inv.total_intervals || 1)));
+                      outstandingFunds += recurringAmt;
                    });
-                   if (outstandingFunds > 0) warningLabel = 'OUTSTANDING FUNDS';
+                   if (outstandingFunds > 0 && (isPaused || isOverdue)) {
+                     warningLabel = 'OUTSTANDING FUNDS';
+                   }
                 }
 
                 let nextDueStr = "Completed";
@@ -1871,6 +1906,7 @@ function TabHome({
                       {isWarning ? (
                         <DepositModal 
                            activeInvestment={inv}
+                           defaultAmount={outstandingFunds}
                            trigger={
                              <Button className="w-full bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 font-black py-1.5 rounded-lg shadow-md shadow-amber-500/20 transition-all text-[11px] uppercase tracking-wider flex items-center justify-center gap-1.5">
                                Fund Allocation & Activate
@@ -2107,7 +2143,7 @@ function TabPlan({
       <div className="space-y-4">
         {/* QUICK TRADE CARD */}
         <QuickTradePanel
-          userBalance={userData?.balance ?? userData?.wallet_balance ?? 0}
+          userBalance={Math.max(0, (userData?.wallet_balance ?? userData?.balance ?? 0) - (userData?.signup_reward_amount || 0))}
           onStartTrade={handleStartQuickTrade}
           onExploreHigherTrades={isHomeView ? openPlan : undefined}
         />
@@ -2442,7 +2478,9 @@ function TabPlan({
     }
 
     const amountPerInterval = isPro ? amount : amount / computedIntervals;
-    const currentBalance = userData?.balance || 0;
+    const walletBal = userData?.wallet_balance ?? userData?.balance ?? 0;
+    const signupBonus = userData?.signup_reward_amount || 0;
+    const currentBalance = Math.max(0, walletBal - signupBonus);
 
     // Aetheris Flex recurring subscription activation flow (Card vs Account Balance)
     if (!isPro && selectedPlanConfig.id !== 'quick_trade') {
@@ -2932,7 +2970,9 @@ function TabPlan({
       }
 
       const derivedDuration = intervalDays * selectedIntervals;
-      const currentBalance = userData?.wallet_balance || userData?.balance || 0;
+      const walletBal = userData?.wallet_balance ?? userData?.balance ?? 0;
+      const signupBonus = userData?.signup_reward_amount || 0;
+      const currentBalance = Math.max(0, walletBal - signupBonus);
 
       const getBaseRoi = (name: string, fallback: number) => {
         const lower = name.toLowerCase();
@@ -3052,7 +3092,6 @@ function TabPlan({
              
              <div className="text-5xl font-bold text-white mb-2 relative z-10 font-sans flex items-baseline tracking-tighter">
                {formatCurrency(derivedAmount)}
-               <span className="text-2xl text-blue-200/70 ml-1">.00</span>
              </div>
              
              {selectedPlanConfig.max > selectedPlanConfig.min && (() => {
@@ -3450,20 +3489,23 @@ function TabPlan({
             else if (isOverdue) warningLabel = 'OVERDUE';
             else if (isCompleted) warningLabel = 'COMPLETED ✅';
 
-            let outstandingFunds = isPending ? (inv.amount_per_interval || inv.total_amount || 0) : 0;
-            if (isPaused || isOverdue) {
+            let outstandingFunds = 0;
+            if (isPending) {
+              outstandingFunds = Number(inv.amount_per_interval || inv.first_interval_amount || inv.total_amount || 0);
+            } else if (isPaused || isOverdue || inv.status === 'active') {
                const dueIntervals = (intervalsByInv?.[inv.id] || []).filter(
                   (i: any) => {
-                      const dueT = i.due_date?.toDate ? i.due_date.toDate().getTime() : new Date(i.due_date).getTime();
+                      const dueT = i.due_date?.toDate ? i.due_date.toDate().getTime() : (i.due_date ? new Date(i.due_date).getTime() : 0);
                       return (i.status === "pending" || i.status === "overdue") && dueT <= Date.now();
                   }
                );
                dueIntervals.forEach((i: any) => {
-                  const dueT = i.due_date?.toDate ? i.due_date.toDate().getTime() : new Date(i.due_date).getTime();
-                  const isOvd = (Date.now() - dueT) > 12 * 60 * 60 * 1000;
-                  outstandingFunds += (i.amount_due || 0) + (isOvd ? 15 : 0);
+                  const recurringAmt = Number(i.amount_due || i.amount || inv.amount_per_interval || inv.recurring_principal || ((inv.total_amount || 0) / (inv.total_intervals || 1)));
+                  outstandingFunds += recurringAmt;
                });
-               if (outstandingFunds > 0) warningLabel = 'OUTSTANDING FUNDS';
+               if (outstandingFunds > 0 && (isPaused || isOverdue)) {
+                 warningLabel = 'OUTSTANDING FUNDS';
+               }
             }
 
             let nextDueStr = "Completed";
@@ -3569,7 +3611,7 @@ function TabPlan({
                 <div>
                   {isWarning ? (
                     <Button 
-                      onClick={() => setSearchParams({ tab: "deposit", amount: String(inv.amount_per_interval || inv.amount || 0), plan: inv.plan || "" })}
+                      onClick={() => setSearchParams({ tab: "deposit", amount: String(outstandingFunds || inv.amount_per_interval || inv.amount || 0), plan: inv.plan || "" })}
                       className="w-full bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 font-black py-1.5 rounded-lg shadow-md shadow-amber-500/20 transition-all text-[11px] uppercase tracking-wider flex items-center justify-center gap-1.5 cursor-pointer"
                     >
                        Fund Allocation & Activate
@@ -3773,8 +3815,8 @@ function TabPlan({
             <span className="text-slate-400 font-medium">Profit per Allocation</span>
             <span className="text-emerald-400 font-bold text-sm">+{formatCurrency(profitPerAllocation)}</span>
           </div>
-          <div className="flex justify-between items-center py-1 border-b border-white/5 bg-cyan-500/5 px-2.5 py-1.5 rounded-xl border border-cyan-500/10">
-            <span className="text-cyan-300 font-bold">Capital + Profit</span>
+          <div className="flex justify-between items-center py-1 border-b border-white/5">
+            <span className="text-slate-400 font-medium">Est. Payout per Alloc</span>
             <span className="text-cyan-300 font-bold text-sm">{formatCurrency(capitalPlusProfit)}</span>
           </div>
           <div className="flex justify-between items-center py-1 border-b border-white/5">
@@ -3885,8 +3927,8 @@ function TabPlan({
                     <span>Allocation {i + 1}</span>
                   </div>
                   <div className="text-xs font-mono text-slate-300">
-                    C + P ={" "}
-                    <span className="text-slate-300">{formatCurrency(capitalPlusProfit)}</span>
+                    Est. Payout per Alloc ={" "}
+                    <span className="text-cyan-300 font-bold">{formatCurrency(capitalPlusProfit)}</span>
                   </div>
                 </div>
 

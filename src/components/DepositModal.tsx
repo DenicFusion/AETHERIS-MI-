@@ -6,7 +6,7 @@ export function DepositModal({ trigger, activeInvestment, defaultAmount }: any) 
   const [, setSearchParams] = useSearchParams();
 
   if (trigger) {
-    const amt = activeInvestment?.amount_per_interval || activeInvestment?.amount || defaultAmount || 0;
+    const amt = defaultAmount || activeInvestment?.amount_per_interval || activeInvestment?.amount || 0;
     const plan = activeInvestment?.plan || activeInvestment?.name || "";
 
     return (

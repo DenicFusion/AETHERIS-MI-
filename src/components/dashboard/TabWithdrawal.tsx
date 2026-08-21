@@ -14,7 +14,8 @@ import {
   Lock, 
   X, 
   ArrowRight,
-  Crown
+  Crown,
+  Wallet
 } from "lucide-react";
 import { WithdrawalReceipt } from "../WithdrawalReceipt";
 import { PaymentMethodsSettings } from "../profile/ProfileExtras";
@@ -206,14 +207,23 @@ export function TabWithdrawal({
     }
 
     // Map saved payment method format to API format
-    const isCrypto = selectedMethod.type === 'crypto';
-    const methodStr = isCrypto ? 'crypto' : 'wire';
+    const methodType = selectedMethod.type || 'wire';
+    const isCrypto = methodType === 'crypto';
     
-    const payloadBankName = isCrypto 
-      ? selectedMethod.network || 'Crypto' 
-      : selectedMethod.bankName || 'Bank Account';
+    let payloadBankName = 'Payment Destination';
+    if (isCrypto) {
+      payloadBankName = selectedMethod.network || 'Crypto';
+    } else if (methodType === 'bank') {
+      payloadBankName = selectedMethod.bankName || 'Bank Account';
+    } else if (methodType === 'paypal') {
+      payloadBankName = 'PayPal';
+    } else if (methodType === 'skrill') {
+      payloadBankName = 'Skrill';
+    } else if (methodType === 'neteller') {
+      payloadBankName = 'Neteller';
+    }
       
-    const payloadAccountNumber = selectedMethod.details || selectedMethod.iban || selectedMethod.accountNumber || '';
+    const payloadAccountNumber = selectedMethod.email || selectedMethod.accountId || selectedMethod.details || selectedMethod.iban || selectedMethod.accountNumber || '';
     const payloadAccountName = selectedMethod.accountName || selectedMethod.accountHolder || '';
     const payloadRoutingNumber = selectedMethod.swift || '';
 
@@ -226,7 +236,7 @@ export function TabWithdrawal({
           user_id: user?.uid,
           amount: amountNum,
           source,
-          method: methodStr,
+          method: methodType,
           bankName: payloadBankName,
           accountName: payloadAccountName,
           accountNumber: payloadAccountNumber,
@@ -427,21 +437,33 @@ export function TabWithdrawal({
                 <div className="flex items-center gap-3">
                   <div
                     className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${
-                      selectedMethodId === m.id ? "bg-blue-500/20" : "bg-[#172554]"
+                      selectedMethodId === m.id ? "bg-blue-500/20 text-blue-400" : "bg-[#172554] text-slate-400"
                     }`}
                   >
-                    <Landmark
-                      className={`w-5 h-5 ${selectedMethodId === m.id ? "text-blue-400" : "text-slate-400"}`}
-                    />
+                    {m.type === 'crypto' ? (
+                      <Wallet className="w-5 h-5" />
+                    ) : m.type === 'bank' ? (
+                      <Landmark className="w-5 h-5" />
+                    ) : (
+                      <CreditCard className="w-5 h-5" />
+                    )}
                   </div>
                   <div>
                     <div className="text-sm font-bold text-white uppercase tracking-wide">
-                      {m.type === "crypto" ? "Crypto Wallet" : "Bank Account"}
-                      {m.network && ` (${m.network})`}
-                      {m.bankName && ` - ${m.bankName}`}
+                      {m.type === "crypto" 
+                        ? `Crypto Wallet (${m.network || 'USDT'})` 
+                        : m.type === "bank"
+                        ? `Bank Account ${m.bankName ? `- ${m.bankName}` : ''}`
+                        : m.type === "paypal"
+                        ? `PayPal (${m.email || m.details})`
+                        : m.type === "skrill"
+                        ? `Skrill (${m.email || m.details})`
+                        : m.type === "neteller"
+                        ? `Neteller (${m.accountId || m.details})`
+                        : (m.accountName || "Payment Method")}
                     </div>
                     <div className="text-xs text-slate-400 font-mono mt-0.5">
-                      {m.details || m.iban || m.accountNumber ? `IBAN/Acc: ${m.details || m.iban || m.accountNumber}` : ""}
+                      {m.details || m.iban || m.accountNumber || m.email || m.accountId || ""}
                     </div>
                   </div>
                 </div>

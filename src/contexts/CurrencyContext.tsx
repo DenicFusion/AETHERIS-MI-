@@ -14,7 +14,10 @@ interface CurrencyContextType {
   preferredCurrency: Currency;
   localCurrency: string | null;
   setPreferredCurrency: (currency: Currency) => Promise<void>;
-  formatCurrency: (amountInUsd: number) => string;
+  formatCurrency: (
+    amountInUsd: number, 
+    options?: { decimals?: boolean; minimumFractionDigits?: number; maximumFractionDigits?: number } | boolean
+  ) => string;
   convertCurrency: (amountInUsd: number) => number;
   rates: CurrencyRates;
 }
@@ -86,14 +89,28 @@ export const CurrencyProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     return symbolMap[currency] || currency;
   };
 
-  const formatCurrency = (amountInUsd: number) => {
-    const converted = convertCurrency(amountInUsd);
+  const formatCurrency = (
+    amountInUsd: number,
+    options?: { decimals?: boolean; minimumFractionDigits?: number; maximumFractionDigits?: number } | boolean
+  ) => {
+    const num = Number(amountInUsd) || 0;
+    const converted = convertCurrency(num);
     
-    // For standard display we can use native Intl.NumberFormat without currency symbol
-    // then manually prepend our explicit symbol
+    let minDec = 2;
+    let maxDec = 2;
+
+    if (typeof options === 'boolean') {
+      minDec = options ? 2 : 0;
+      maxDec = options ? 2 : 0;
+    } else if (options) {
+      minDec = options.minimumFractionDigits ?? (options.decimals === false ? 0 : 2);
+      maxDec = options.maximumFractionDigits ?? (options.decimals === false ? 0 : 2);
+    }
+    
+    // For standard display we use native Intl.NumberFormat with exact decimals
     const formattedNumber = new Intl.NumberFormat('en-US', {
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
+      minimumFractionDigits: minDec,
+      maximumFractionDigits: maxDec,
     }).format(converted);
 
     const symbol = getCurrencySymbol(preferredCurrency);
